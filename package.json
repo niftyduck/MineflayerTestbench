@@ -1,0 +1,14 @@
+{
+  "name": "mineflayer-bot",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "main": "node main.js"
+  },
+  "dependencies": {
+    "fast-csv": "^5.0.5",
+    "mineflayer": "^4.31.0",
+    "mineflayer-pathfinder": "^2.4.5",
+    "uuid": "^11.1.0"
+  }
+}
