@@ -1,14 +1,21 @@
 {
-  "name": "mineflayer-bot",
+  "name": "iv4xr-minecraft-concretizer",
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "main": "node main.js"
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "dev": "ts-node src/main.ts"
   },
   "dependencies": {
     "fast-csv": "^5.0.5",
     "mineflayer": "^4.31.0",
     "mineflayer-pathfinder": "^2.4.5",
     "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.2.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
   }
 }
