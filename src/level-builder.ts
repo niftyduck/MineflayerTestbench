@@ -1,36 +1,38 @@
 import fs from 'fs';
 import fastcsv from 'fast-csv';
+import nbtts from "nbt-ts";
 import { Vec3 } from 'vec3';
 import { v4 as uuidv4 } from 'uuid';
 import type { Bot } from 'mineflayer';
 
 // Coords should be a vec3 of the bottom xyz corner of the level
-async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<any> {    
+async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<any> {
     bot.chat('/gamemode spectator @s');
     bot.chat(`/tp @s ${coords.x} ${coords.y} ${coords.z}`);
-    
-    const structure: string[][][] = await loadStructure(csv_file)
-    
+
+    const [inventory, structure] = await load_csv(csv_file);
+
     // dy must be at least 2 block tall for the bot to fit
-    const dy: number = Math.max(structure.length, 2);
+    const dy: number = Math.max(structure.length, 3);
 
     // since CSVs fill empty cells with commas, we can just use the first line's length
     const layer: string[][] = structure[0] || [];
     const dx: number = layer[0]?.length || 0;
 
     // find longest row for the z dimension
-    const dz: number = structure.reduce((a: string[][], b: string[][]) => a.length > b.length ? a : b).length
+    const dz: number = Math.max(...structure.map((a: string[][]) => a.length));
 
 
     await bot.waitForChunksToLoad();
 
     // clear out area and surrouns with barriers
-    bot.chat(`/fill ${coords.x - 1} ${coords.y - 1} ${coords.z - 1} ${coords.x + dx + 1} ${coords.y + dy + 1} ${coords.z + dz + 1} minecraft:barrier hollow`);
-    bot.chat('/effect clear @s')
-    bot.chat('/clear')
+    bot.chat(`/fill ${coords.x - 1} ${coords.y - 1} ${coords.z - 1} ${coords.x + dx} ${coords.y + dy} ${coords.z + dz} minecraft:barrier hollow`);
+    bot.chat('/clear');
+    bot.chat('/xp set @s 0');
+    bot.chat('/effect clear @s');
     // execute the kill command multiple times to also kill any items the entities may have dropped
     // also to handle slimes
-    const kill_cmd = `/kill @e[type=!minecraft:player, x=${coords.x - 1}, y=${coords.y - 1}, z=${coords.z - 1}, dx=${dx + 1}, dy=${dy + 1}, dz=${dz + 1}]`
+    const kill_cmd = `/kill @e[type=!minecraft:player, x=${coords.x - 1}, y=${coords.y - 1}, z=${coords.z - 1}, dx=${dx}, dy=${dy}, dz=${dz}]`
     bot.chat(kill_cmd);
     bot.chat(kill_cmd);
     bot.chat(kill_cmd);
@@ -41,7 +43,7 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<any
     for (const [dy, layer] of structure.entries()) {
         for (const [dz, line] of layer.entries()) {
             for (const [dx, entry] of line.entries()) {
-                const [thing, tag] = getTag(entry);
+                const [thing, tag] = getTag(entry.trim());
                 // skip empty blocks
                 if (!thing)
                     continue;
@@ -53,7 +55,7 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<any
 
                     // if the entity is the player, tp us to that location already
                     // we can skip everything else, the player can't be traced as an entity nor can it take any NBT data
-                    if (entity_id === bot.username){
+                    if (entity_id === bot.username) {
                         bot.chat(`/tp @s ${pos.x} ${pos.y} ${pos.z}`)
                         continue;
                     }
@@ -62,7 +64,7 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<any
                     if (tag && uuid) {
                         map[tag] = uuid;
                     }
-                } else { 
+                } else {
                     // otherwise assume it's a block
                     setBlock(thing, pos, bot);
                     if (tag) {
@@ -74,13 +76,30 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<any
         }
     }
 
+    // load invetory of bot
+    if (inventory[0]) {
+        // hotbar
+        for (const [slot, item] of inventory[0].entries()) {
+            bot.chat(`/item replace entity @s hotbar.${slot} with ${item.trim()}`);
+        }
+
+        // rest of the inventory
+        inventory.shift();
+        for (const [row, items] of inventory.entries()) {
+            for (const [slot, item] of items.entries()) {
+                const slot_number = row * 9 + slot;
+                bot.chat(`/item replace entity @s inventory.${slot_number} with ${item.trim()}`);
+            }
+        }
+    }
+
     // delay so entities can spawn and block info is propagated back to the bot
     await bot.waitForTicks(10);
 
     // populate map with block or entity instead of just their uuid or position
-    for (const tag in map){
+    for (const tag in map) {
         const elem: Vec3 | string = map[tag];
-        
+
         if (elem instanceof Vec3) {
             map[tag] = bot.blockAt(elem);
         } else {
@@ -92,45 +111,45 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<any
     return map;
 }
 
-async function loadStructure(csv_file: string): Promise<string[][][]> {
+async function load_csv(csv_file: string): Promise<[string[][], string[][][]]> {
+    const inventory: string[][] = [];
     const structure: string[][][] = [];
+    let current_layer: string[][] = [];
 
     await new Promise((resolve) => {
-        let current_layer: string[][] = [];
-
+        let dest = inventory;
         fs.createReadStream(csv_file)
             .pipe(fastcsv.parse({ headers: false }))
             .on('data', (row) => {
                 // "|" symbol is use to separate vertical layers in the y layer
-                if (row[0].startsWith('|')) {
+                if (row[0]?.startsWith('|')) {
+                    // swap out, we are no longer doing the inventory
+                    dest = current_layer;
                     // remove pipe symbol
                     row[0] = row[0].substring(1);
                     structure.push(current_layer);
                     current_layer = [];
                 }
-                current_layer.push(row);
+                dest.push(row);
             }).on('end', resolve);
     })
-
+    structure.push(current_layer);
     // remove the first layer if it's empty 
-    // in other words allow users to start with a "|" without  creating an extra empty layer
     if (structure[0]?.length === 0) {
         structure.shift();
     }
-    return structure;
+    return [inventory, structure];
 }
 
 function summonEntity(entity: string, pos: Vec3, bot: Bot, tag: string | null): string | undefined {
-    let [entity_id, nbt] = getNbt(entity)
-    nbt = nbt || "{data:{}}";
+    let [entity_id, nbt_tags] = getNbt(entity);
     let uuid: string | undefined;
-
     if (tag) {
         uuid = uuidv4();
-        nbt = nbt.slice(0, -1) + `,UUID:${uuidToArray(uuid)}}`;
+        (nbt_tags as any).UUID = uuidToArray(uuid);
     }
     // we count the bot position as an entity
-    bot.chat(`/summon ${entity_id} ${pos.x} ${pos.y} ${pos.z} ${nbt}`);
+    bot.chat(`/summon ${entity_id} ${pos.x} ${pos.y} ${pos.z} ${nbtts.stringify(nbt_tags)}`);
 
     return uuid;
 }
@@ -162,19 +181,17 @@ function getTag(input: string): [string, string | null] {
             input.substring(split + 1)
         ];
     }
-
     // Otherwise return original string and empty string
     return [input, null];
 }
 
-function getNbt(input: string): [string, string | null] {
+function getNbt(input: string): [string, nbtts.Tag] {
     let start: number = -1;
     let end: number = -1;
     let bracket_level: number = 0;
 
     for (let i = 0; i < input.length; i++) {
         const char = input[i];
-
         if (char === '{') {
             if (start === -1) {
                 start = i;
@@ -186,28 +203,29 @@ function getNbt(input: string): [string, string | null] {
         }
     }
 
+    let base: string = input;
+    let tags: string = "{}";
+
     if (start !== -1 && bracket_level === 0) {
-        return [
-            input.substring(0, start),
-            input.substring(start, end),
-        ];
+        base = input.substring(0, start);
+        tags = input.substring(start, end + 1);
     }
 
-    return [input, null];
+    return [base, nbtts.parse(tags)];
 }
 
 // convert from standard dashed notation: eaec6bda-374c-4cf0-9e5d-e986a33d8a78 
 // to miecraft signed int representation: [I;-353604646,927747312,-1638012538,-1556247944]
-function uuidToArray(uuid: string): string{
+function uuidToArray(uuid: string): Int32Array {
     const hex = uuid.replace(/-/g, '');
     const buffer = Buffer.from(hex, 'hex');
 
-    const int1 = buffer.readInt32BE(0);
-    const int2 = buffer.readInt32BE(4);
-    const int3 = buffer.readInt32BE(8);
-    const int4 = buffer.readInt32BE(12);
+    const arr = new Int32Array(4);
 
-    return `[I;${int1},${int2},${int3},${int4}]`;
+    for (let i = 0; i < 4; i++) {
+        arr[i] = buffer.readInt32BE(i * 4);
+    }
+    return arr;
 }
 
 export { buildLevel };
