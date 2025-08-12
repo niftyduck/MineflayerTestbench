@@ -10,14 +10,13 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<any
     bot.chat('/gamemode spectator @s');
     bot.chat(`/tp @s ${coords.x} ${coords.y} ${coords.z}`);
 
-    const [inventory, structure] = await load_csv(csv_file);
+    const [inventory, structure] = await loadCsv(csv_file);
 
     // dy must be at least 2 block tall for the bot to fit
     const dy: number = Math.max(structure.length, 3);
 
     // since CSVs fill empty cells with commas, we can just use the first line's length
-    const layer: string[][] = structure[0] || [];
-    const dx: number = layer[0]?.length || 0;
+    const dx: number = structure?.[0]?.[0]?.length || 3;
 
     // find longest row for the z dimension
     const dz: number = Math.max(...structure.map((a: string[][]) => a.length));
@@ -66,7 +65,7 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<any
                     }
                 } else {
                     // otherwise assume it's a block
-                    setBlock(thing, pos, bot);
+                    bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${thing}`);
                     if (tag) {
                         map[tag] = pos;
                     }
@@ -108,10 +107,13 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<any
     }
 
     bot.chat('/gamemode survival @s');
+    bot.chat('/effect give @s minecraft:instant_health 1 200');
+    bot.chat('/effect give @s minecraft:saturation 1 200');
+    await bot.waitForTicks(20);
     return map;
 }
 
-async function load_csv(csv_file: string): Promise<[string[][], string[][][]]> {
+async function loadCsv(csv_file: string): Promise<[string[][], string[][][]]> {
     const inventory: string[][] = [];
     const structure: string[][][] = [];
     let current_layer: string[][] = [];
@@ -152,10 +154,6 @@ function summonEntity(entity: string, pos: Vec3, bot: Bot, tag: string | null): 
     bot.chat(`/summon ${entity_id} ${pos.x} ${pos.y} ${pos.z} ${nbtts.stringify(nbt_tags)}`);
 
     return uuid;
-}
-
-function setBlock(block: string, pos: Vec3, bot: Bot): void {
-    bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${block}`);
 }
 
 function getTag(input: string): [string, string | null] {
