@@ -48,17 +48,11 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<any
                     continue;
 
                 const pos: Vec3 = new Vec3(coords.x + dx, coords.y + dy, coords.z + dz);
-                // if it starts with @ it's an entity
-                if (thing[0] === "@") {
+                if (thing == "@player"){
+                    bot.chat(`/tp @s ${pos.x} ${pos.y} ${pos.z}`)
+                    // if it starts with @ it's an entity
+                } else if (thing[0] === "@") {
                     let entity_id: string = thing.substring(1);
-
-                    // if the entity is the player, tp us to that location already
-                    // we can skip everything else, the player can't be traced as an entity nor can it take any NBT data
-                    if (entity_id === bot.username) {
-                        bot.chat(`/tp @s ${pos.x} ${pos.y} ${pos.z}`)
-                        continue;
-                    }
-
                     let uuid = await summonEntity(entity_id, pos, bot, tag);
                     if (tag && uuid) {
                         map[tag] = uuid;
