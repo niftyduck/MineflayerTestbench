@@ -1,5 +1,5 @@
-iron_pickaxe,golden_apple,stone 64,anvil 10
-acacia_boat,cake
+iron_pickaxe,golden_apple,stone 64,anvil 10,,
+acacia_boat,cake,,,,
 |stone,stone,stone,stone,stone,stone
 stone,stone,stone,stone,stone,stone
 stone,stone,stone,stone,stone,stone
@@ -24,7 +24,7 @@ stone,stone,stone,stone,stone,stone
 ,,@player,@minecraft:bee{NoAI:1b}^frank,,iron_block
 ,,,,,iron_block
 ,,,,,iron_block
-,,,,,iron_block
+copper_bulb,acacia_button^btn,,,,iron_block
 ,,,,,iron_block
 ,,,,,iron_block
 ,,,,,iron_block

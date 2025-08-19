@@ -1,6 +1,8 @@
 {
-  "name": "iv4xr-minecraft-concretizer",
-  "version": "0.0.1",
+  "name": "mineflayer-testbench",
+  "version": "0.0.2",
+  "main": "dist/main.js",
+  "types": "dist/main.d.ts",
   "type": "module",
   "scripts": {
     "build": "tsc",
@@ -8,13 +10,19 @@
     "dev": "ts-node src/main.ts"
   },
   "dependencies": {
-    "fast-csv": "^5.0.5",
-    "mineflayer": "^4.31.0",
+    "@fast-csv/parse": "^5.0.5",
+    "mineflayer": "4.32.0",
+    "mineflayer-collectblock": "^1.6.0",
     "mineflayer-pathfinder": "^2.4.5",
-    "nbt-ts": "2.0.2",
-    "uuid": "^11.1.0"
+    "nbt-ts": "^2.0.2",
+    "prismarine-block": "^1.22.0",
+    "prismarine-entity": "^2.5.0",
+    "uuid": "^11.1.0",
+    "vec3": "^0.1.10"
   },
   "devDependencies": {
+    "@types/node": "^24.3.0",
+    "require-self": "^0.2.3",
     "typescript": "^5.9.2"
   }
 }

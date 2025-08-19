@@ -1,38 +1,75 @@
 import type { Bot } from 'mineflayer';
-import { Block } from 'prismarine-block';
-import { Entity } from 'prismarine-entity';
+
+import type { Block } from 'prismarine-block';
+import type { Entity } from 'prismarine-entity';
+import type { Item } from 'prismarine-item';
+
+import pathfinder, { Movements, Pathfinder } from 'mineflayer-pathfinder';
+
 import { Vec3 } from 'vec3';
-import pathfinder, { goals } from 'mineflayer-pathfinder';
+
+// because instanceof doesn't work...
+function isBlock(target: any): target is Block {
+    return target.constructor.name == "Block";
+}
+
+function isEntity(target: any): target is Entity {
+    return target.constructor.name == "Entity";
+}
+
+function isItem(target: any): target is Item {
+    return target.constructor.name == "Item";
+}
 
 
-async function moveTo(bot: Bot, target: Block | Entity | Vec3): Promise<boolean> {
+let movement: Movements;
+
+export function setMovements(movement_p: Movements){
+    movement = movement_p;
+}
+
+export async function moveTo(bot: Bot, target: Block | Entity | Vec3): Promise<boolean> {
     let coords: Vec3 = target instanceof Vec3 ? target : target.position;
+    await bot.waitForTicks(1);
 
     return new Promise((resolve) => {
-        bot.once("goal_reached", () => {
+        function cleanup() {
+            clearTimeout(timeout);
             bot.removeAllListeners("goal_reached");
             bot.removeAllListeners("path_update");
+
+            bot.pathfinder.setGoal(null);
+            bot.pathfinder.stop();
+        }
+
+        const timeout = setTimeout(() => {
+            cleanup();
+            resolve(false);
+        }, 10000);
+
+        bot.once("goal_reached", () => {
+            cleanup();
             resolve(true);
         })
 
         bot.on("path_update", (status) => {
             if (status.status === "noPath" || status.status === "timeout") {
-                bot.removeAllListeners("goal_reached");
-                bot.removeAllListeners("path_update");
-                bot.pathfinder.stop();
+                cleanup();
                 resolve(false);
+                return;
             }
         })
-
-        bot.pathfinder.setGoal(new goals.GoalNear(coords.x, coords.y, coords.z, 1));
+        const goal = new pathfinder.goals.GoalNear(coords.x, coords.y, coords.z, 1);
+        bot.pathfinder.setMovements(movement);
+        bot.pathfinder.setGoal(goal);
     })
 }
 
 
-async function breakBlock(bot:Bot, block: Block | Vec3): Promise<boolean> {
-    const to_dig: Block | null = block instanceof Block ? block : bot.blockAt(block);
+export async function breakBlock(bot: Bot, block: Block | Vec3): Promise<boolean> {
+    const to_dig: Block | null = isBlock(block) ? block : bot.blockAt(block);
 
-    if (!to_dig || to_dig.type == 0){
+    if (!to_dig || to_dig.type == 0) {
         return false;
     }
 
@@ -42,14 +79,67 @@ async function breakBlock(bot:Bot, block: Block | Vec3): Promise<boolean> {
     return to_dig.type != bot.blockAt(to_dig.position)?.type;
 }
 
-async function click(bot: Bot, target: Block | Entity | Vec3) {
-    if (target instanceof Entity){
-        await bot.activateEntity(target);
-        return;
+export async function click(bot: Bot, target: Block | Entity | Vec3) {
+    if (isEntity(target)) {
+        return await bot.activateEntity(target);
     }
 
-    let block: Block | null = target instanceof Block ? target : bot.blockAt(target);
-    if (block){
-        await bot.activateBlock(block);
+    let block: Block | null = isBlock(target) ? target : bot.blockAt(target);
+    if (block) {
+        return await bot.activateBlock(block);
     }
+}
+
+export async function pickUpLoot(bot: Bot): Promise<boolean> {
+    await bot.waitForTicks(1);
+    const item_entity = bot.nearestEntity((e) => e.name === "item");
+
+    if (!item_entity || !item_entity.isValid || bot.entity.position.distanceTo(item_entity.position) > 5)
+        return false;
+
+    return new Promise<boolean>(resolve => {
+        const timeout = setTimeout(async () => {
+            bot.removeAllListeners("entityGone");
+            await bot.pathfinder.stop();
+            resolve(false);
+        }, 2000);
+
+        bot.on('entityGone', async (entity) => {
+            if (entity === item_entity) {
+                clearTimeout(timeout);
+                await bot.pathfinder.stop();
+                bot.removeAllListeners("entityGone");
+                resolve(true);
+            }
+        });
+        const goal = new pathfinder.goals.GoalFollow(item_entity, 0.4);
+        bot.pathfinder.setMovements(movement);
+        bot.pathfinder.setGoal(goal);
+    })
+}
+
+export async function attack(bot: Bot, entity: Entity) {
+    await bot.attack(entity);
+}
+
+export async function selectItem(bot: Bot, element: number | string): Promise<boolean> {
+    if (typeof element === "number") {
+        await bot.setQuickBarSlot(element + 1);
+        return true;
+    }
+
+
+    const item: Item = bot.inventory.items().filter(item => item.name === element)?.[0];
+    if (!item) {
+        return false;
+    }
+
+    await bot.equip(item, "hand");
+
+    return bot.entity.heldItem === item;
+}
+
+
+export async function wait(bot: Bot, ticks: number) {
+    await bot.waitForTicks(ticks);
 }

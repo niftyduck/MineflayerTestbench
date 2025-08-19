@@ -1,4 +1,43 @@
-# Mineflayer based test concretizer for IV4XR-MBT
+# MineflayerTestbench
+Scripts to use Mineflayer for testing Minecraft
+
+## How to run
+Start by installing dependencies with 
+
+`npm i`
+
+Then you will need to compile the project with
+
+`npm run build`
+
+To actually run the project with default parameters, you can then use
+
+`npm run start`
+
+Supported commmand-line args:
+
+- ***username***: the username for the bot. Defaults to "Bot" if unspecified
+- ***level***: path to the csv file of the level, as described in [Level Format](#level-format). Defaults to "./test.csv"
+- ***address***: the address and port of the minecraft server, accepts both IPV4 addresses as well as domains in the standard format address:port. Defaults to "localhost:25565"
+
+Example format:
+
+`npm run start address=rainbownetwork.co.uk:25565 username=itsAlisaa`
+
+## Minecraft server setup
+For the project to run you will need to set up a local vanilla Minecraft server for the bot to connect to. 
+
+The latest Minecraft version MineFlayer currently supports is [1.21.1](https://www.minecraft.net/en-us/article/minecraft-java-edition-1-21-1).
+
+Since the bot doesn't have a linked Microsoft account, you will need to disable authentication which can be done by setting
+
+`online-mode=false`
+
+in the *server.properties* file.
+
+On the first run with a specific username, to enable the bot to do what it has to do, you will need to give OP permission to the bot, if this the case, the bot will simply tell you to run `op <bot_name>` from the console. 
+
+It is reccommended to use a void preset superflat world for the server.
 
 ## Level format
 The levels are defined in a `.csv` file format, every cell can be an item, entity or block.

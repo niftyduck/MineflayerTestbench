@@ -1,5 +1,5 @@
 import fs from 'fs';
-import fastcsv from 'fast-csv';
+import csv from '@fast-csv/parse';
 import nbtts from "nbt-ts";
 import { Vec3 } from 'vec3';
 import { v4 as uuidv4 } from 'uuid';
@@ -115,7 +115,7 @@ async function loadCsv(csv_file: string): Promise<[string[][], string[][][]]> {
     await new Promise((resolve) => {
         let dest = inventory;
         fs.createReadStream(csv_file)
-            .pipe(fastcsv.parse({ headers: false }))
+            .pipe(csv.parse({ headers: false }))
             .on('data', (row) => {
                 // "|" symbol is use to separate vertical layers in the y layer
                 if (row[0]?.startsWith('|')) {
