@@ -16,13 +16,15 @@ To actually run the project with default parameters, you can then use
 
 Supported commmand-line args:
 
-- ***username***: the username for the bot. Defaults to "Bot" if unspecified
-- ***level***: path to the csv file of the level, as described in [Level Format](#level-format). Defaults to "./test.csv"
-- ***address***: the address and port of the minecraft server, accepts both IPV4 addresses as well as domains in the standard format address:port. Defaults to "localhost:25565"
+- ***username***: the username for the bot. Defaults to "*Bot*" if unspecified
+- ***level***: path to the csv file of the level, as described in [Level Format](#level-format). Defaults to "*./test.csv*"
+- ***test***: path to the json file defining the test to be run, as described in [Test file format](#test-file-format). Defaults to "*./test.json*"
+- ***coords***: the coordinates where the test will take place. This refers to the bottom most x,y,z corner of the structure boudning box. Defaults to '32,65,0'
+- ***address***: the address and port of the Minecraft server, accepts both IPV4 addresses as well as domains in the standard format address:port. Defaults to "*localhost:25565*"
 
 Example format:
 
-`npm run start address=rainbownetwork.co.uk:25565 username=itsAlisaa`
+`npm run start address=tortaccia.duckdns.org:25565 username=itsAlisaa coords=32,69,128`
 
 ## Minecraft server setup
 For the project to run you will need to set up a local vanilla Minecraft server for the bot to connect to. 
@@ -40,7 +42,9 @@ On the first run with a specific username, to enable the bot to do what it has t
 It is reccommended to use a void preset superflat world for the server.
 
 ## Level format
-The levels are defined in a `.csv` file format, every cell can be an item, entity or block.
+The levels are defined in a `.csv` file format, every cell can be an item, entity or block. 
+
+A sample *test.csv* file is provided to show how a simple level might be designed. 
 
 ### Inventory
 
@@ -61,12 +65,12 @@ For example:
 
 `minecraft:cake`
 
-are all valid examples, the namespace can be omitted, as well as the components or the count, which is assumed to be 1 unless specified
+are all valid examples, the namespace can be omitted, as well as the components or the count, which is assumed to be 1 unless specified.
 
 ### Structure
-A structure has to also be defined in the file. This will be generated at the coordinates decided at runtime and will be constructed inside a barrier block cage with the minimum size to fit the structure, and height being 3 blocks minimum. This can be increased by adding empty rows and columns.
+A structure has to also be defined in the file. This will be generated at the coordinates decided at runtime and will be constructed inside a Barrier block cage with the minimum size to fit the structure, and height being 3 blocks minimum. Every block and entity inside the bounding box will be deleted. This can be increased by adding empty rows and columns. 
 
-The beginning of the structure section is marked by having a `|` *"pipe"* symbol at the beginning of the line. This symbol will also be used to separate layers of the structure. 
+The beginning of the structure section is marked by having a `|` "*pipe*" symbol at the beginning of the line. This symbol will also be used to separate layers of the structure in the y direction, similar as to how it's implemented in [LabRecruits](https://github.com/iv4xr-project/labrecruits/wiki/Defining-a-level). 
 
 #### Blocks
 The format for blocks is the same as for the in-game `/setblock` command:
@@ -80,6 +84,8 @@ For example:
 `piston[facing=south]`
 
 `hopper{Items:[{Slot:0b,id:"minecraft:stone",count:1}]}`
+
+*NOTE: some blocks that require top or side support might not be spawned in successfully in some situations due to how the level is built from bottom to top. This has not been tested for all blocks in all positions.* 
 
 #### Entities
 Entities are maked by starting with an `@` symbol and use the following format:
@@ -107,4 +113,7 @@ Examples:
 
 `minecraft:clay^foobar`
 
-Note that player entities are excluded `@Agent1^agent` will fail to even place the agent
+Note that player entities are excluded `@player^agent` will fail to even place the agent
+
+## Test file format
+### #TODO not implemented yet

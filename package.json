@@ -12,11 +12,8 @@
   "dependencies": {
     "@fast-csv/parse": "^5.0.5",
     "mineflayer": "4.32.0",
-    "mineflayer-collectblock": "^1.6.0",
     "mineflayer-pathfinder": "^2.4.5",
     "nbt-ts": "^2.0.2",
-    "prismarine-block": "^1.22.0",
-    "prismarine-entity": "^2.5.0",
     "uuid": "^11.1.0",
     "vec3": "^0.1.10"
   },

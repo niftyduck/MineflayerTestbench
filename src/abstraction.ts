@@ -8,6 +8,12 @@ import pathfinder, { Movements, Pathfinder } from 'mineflayer-pathfinder';
 
 import { Vec3 } from 'vec3';
 
+const TIMEOUT_PATHFIND = 10000;
+const MAX_PICKUP_RANGE = 5;
+const ITEM_PICKUP_RADIUS = .5;
+const ITEM_PICKUP_TIMEOUT = 2000;
+let movement: Movements;
+
 // because instanceof doesn't work...
 function isBlock(target: any): target is Block {
     return target.constructor.name == "Block";
@@ -17,15 +23,18 @@ function isEntity(target: any): target is Entity {
     return target.constructor.name == "Entity";
 }
 
-function isItem(target: any): target is Item {
-    return target.constructor.name == "Item";
-}
 
 
-let movement: Movements;
 
-export function setMovements(movement_p: Movements){
-    movement = movement_p;
+export function setMovements(bot: Bot) {
+
+    const defaultMove: pathfinder.Movements = new pathfinder.Movements(bot);
+
+    // can't break or place blocks while pathfinding
+    defaultMove.canDig = false;
+    defaultMove.scafoldingBlocks = [];
+
+    movement = defaultMove;
 }
 
 export async function moveTo(bot: Bot, target: Block | Entity | Vec3): Promise<boolean> {
@@ -45,7 +54,7 @@ export async function moveTo(bot: Bot, target: Block | Entity | Vec3): Promise<b
         const timeout = setTimeout(() => {
             cleanup();
             resolve(false);
-        }, 10000);
+        }, TIMEOUT_PATHFIND);
 
         bot.once("goal_reached", () => {
             cleanup();
@@ -94,7 +103,7 @@ export async function pickUpLoot(bot: Bot): Promise<boolean> {
     await bot.waitForTicks(1);
     const item_entity = bot.nearestEntity((e) => e.name === "item");
 
-    if (!item_entity || !item_entity.isValid || bot.entity.position.distanceTo(item_entity.position) > 5)
+    if (!item_entity || !item_entity.isValid || bot.entity.position.distanceTo(item_entity.position) > MAX_PICKUP_RANGE)
         return false;
 
     return new Promise<boolean>(resolve => {
@@ -102,7 +111,7 @@ export async function pickUpLoot(bot: Bot): Promise<boolean> {
             bot.removeAllListeners("entityGone");
             await bot.pathfinder.stop();
             resolve(false);
-        }, 2000);
+        }, ITEM_PICKUP_TIMEOUT);
 
         bot.on('entityGone', async (entity) => {
             if (entity === item_entity) {
@@ -112,7 +121,7 @@ export async function pickUpLoot(bot: Bot): Promise<boolean> {
                 resolve(true);
             }
         });
-        const goal = new pathfinder.goals.GoalFollow(item_entity, 0.4);
+        const goal = new pathfinder.goals.GoalFollow(item_entity, ITEM_PICKUP_RADIUS);
         bot.pathfinder.setMovements(movement);
         bot.pathfinder.setGoal(goal);
     })
@@ -127,7 +136,6 @@ export async function selectItem(bot: Bot, element: number | string): Promise<bo
         await bot.setQuickBarSlot(element + 1);
         return true;
     }
-
 
     const item: Item = bot.inventory.items().filter(item => item.name === element)?.[0];
     if (!item) {
