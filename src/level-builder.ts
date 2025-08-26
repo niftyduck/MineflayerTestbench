@@ -21,7 +21,6 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<any
     // find longest row for the z dimension
     const dz: number = Math.max(...structure.map((a: string[][]) => a.length));
 
-
     await bot.waitForChunksToLoad();
 
     // clear out area and surrouns with barriers
@@ -42,27 +41,39 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<any
     for (const [dy, layer] of structure.entries()) {
         for (const [dz, line] of layer.entries()) {
             for (const [dx, entry] of line.entries()) {
-                const [thing, tag] = getTag(entry.trim());
                 // skip empty blocks
-                if (!thing)
+                if (!entry){
                     continue;
+                }
+
+                const [thing, tag] = getTag(entry.trim());
+
 
                 const pos: Vec3 = new Vec3(coords.x + dx, coords.y + dy, coords.z + dz);
+                
                 if (thing == "@player"){
                     bot.chat(`/tp @s ${pos.x} ${pos.y} ${pos.z}`)
-                    // if it starts with @ it's an entity
-                } else if (thing[0] === "@") {
+                    continue;
+                }
+                
+                // if it starts with @ it's an entity
+                if (thing[0] === "@") {
                     let entity_id: string = thing.substring(1);
                     let uuid = await summonEntity(entity_id, pos, bot, tag);
                     if (tag && uuid) {
                         map[tag] = uuid;
                     }
-                } else {
-                    // otherwise assume it's a block
+                    continue;
+                }
+
+
+                // otherwise assume it's a block
+                if (thing){
                     bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${thing}`);
-                    if (tag) {
-                        map[tag] = pos;
-                    }
+                }
+
+                if (tag) {
+                    map[tag] = pos;
                 }
 
             }
@@ -103,7 +114,9 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<any
     bot.chat('/gamemode survival @s');
     bot.chat('/effect give @s minecraft:instant_health 1 200');
     bot.chat('/effect give @s minecraft:saturation 1 200');
+    
     await bot.waitForTicks(20);
+    await bot.setQuickBarSlot(0);
     return map;
 }
 

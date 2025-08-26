@@ -1,0 +1,123 @@
+{
+    "actions": [
+        {
+            "name": "move_to",
+            "target": "chest",
+            "expect_result": true,
+            "verbose": true
+        },
+        {
+            "name": "select_item",
+            "item_id": "iron_axe",
+            "expect_result": true
+        },
+        {
+            "name": "break",
+            "target": "chest",
+            "expect_result": true
+        },
+        {
+            "name": "select_item",
+            "item_id": "cake"
+        },
+        {
+            "name": "place_block_on",
+            "target": "below_chest",
+            "face": "top"
+        },
+        {
+            "name": "select_item",
+            "item_id": "stone"
+        },
+        {
+            "name": "place_block_on",
+            "target": "place",
+            "face": "south"
+        },
+        {
+            "name": "pick_up_loot",
+            "expect_result": true
+        },
+        {
+            "name": "check_block",
+            "target": "chest",
+            "expected": "cake",
+            "expect_result": true
+        },
+        {
+            "name": "wait",
+            "ticks": 15
+        },
+        {
+            "name": "check_inventory",
+            "item_id": "cake",
+            "expect_result": false
+        },
+        {
+            "name": "check_inventory",
+            "item_id": "stone",
+            "count": 63,
+            "expect_result": true
+        },
+        {
+            "name": "check_block",
+            "target": "chest",
+            "expected": "chest",
+            "expect_result": false
+        },
+        {
+            "name": "move_to",
+            "target": "btn",
+            "expect_result": true
+        },
+        {
+            "name": "click",
+            "target": "btn"
+        },
+        {
+            "name": "check_block",
+            "target": "bulb",
+            "expected": "waxed_copper_bulb[lit=true]",
+            "expect_result": true
+        },
+        {
+            "name": "check_entity",
+            "target": "frank",
+            "expected": "{Health:10f}",
+            "expect_result": true
+        },
+        {
+            "name": "move_to",
+            "target": "frank",
+            "expect_result": true
+        },
+        {
+            "name": "select_item",
+            "item_id": "iron_axe",
+            "expect_result": true
+        },
+        {
+            "name": "jump"
+        },
+        {
+            "name": "wait",
+            "ticks": 30
+        },
+        {
+            "name": "attack",
+            "target": "frank"
+        },
+        {
+            "name": "check_entity",
+            "target": "frank",
+            "expected": "{Health:10f}",
+            "expect_result": false
+        },
+        {
+            "name": "check_entity",
+            "target": "frank",
+            "expected": "{Health:1.0f}",
+            "expect_result": true
+        }
+    ]
+}

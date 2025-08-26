@@ -1,12 +1,13 @@
 import mineflayer from 'mineflayer';
 import pathfinder from 'mineflayer-pathfinder';
+import { Vec3 } from 'vec3';
 
 import { isOp, waitForOp } from './op-check.js'
 import { buildLevel } from './level-builder.js';
-import { Vec3 } from 'vec3';
 import { getArgs } from './args-parse.js';
+import {executeTests} from './tests-parser.js'
 
-import { attack, breakBlock, click, moveTo, pickUpLoot, setMovements, wait } from './abstraction.js'
+import { attack, breakBlock, click, moveTo, pickUpLoot, setMovements } from './abstraction.js'
 
 // setup command line args and defaults
 const args: any = getArgs();
@@ -45,9 +46,15 @@ bot.once('spawn', async () => {
     bot.chat('/tag @s add bot');
     await bot.waitForTicks(10);
     const map = await buildLevel(bot, level_csv, location);
+    
+    // console.log(bot.inventory.items());
+    
+    setMovements(bot);
+
+    await executeTests(bot, map, tests_json);
 
     // console.log(map);
-    setMovements(bot);
+    /* 
     await click(bot, map["btn"]);
     await moveTo(bot, map["chest"]);
 
@@ -55,6 +62,7 @@ bot.once('spawn', async () => {
     await pickUpLoot(bot);
     await moveTo(bot, map["frank"]);
     await attack(bot, map["frank"]);
+    */
 
 });
 
