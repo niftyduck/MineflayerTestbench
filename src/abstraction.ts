@@ -51,7 +51,7 @@ export async function moveTo(bot: Bot, target: Block | Entity | Vec3, distance: 
         })
 
         bot.on("path_update", (status) => {
-            if (verbose) console.log(`Path update received: ${status}`);
+            if (verbose) console.log(`Path update received: ${status.status}`);
             if (status.status === "noPath" || status.status === "timeout") {
                 cleanup();
                 resolve(false);
