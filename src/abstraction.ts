@@ -7,6 +7,8 @@ import pathfinder, { Movements } from 'mineflayer-pathfinder';
 import { Vec3 } from 'vec3';
 
 import { isBlock, isEntity } from './type-check.js';
+import { UUID } from 'crypto';
+import { uuid } from 'zod';
 
 const TIMEOUT_PATHFIND = 10000;
 const MAX_PICKUP_RANGE = 5;
@@ -26,8 +28,13 @@ export function setMovements(bot: Bot) {
     movement = defaultMove;
 }
 
-export async function moveTo(bot: Bot, target: Block | Entity | Vec3, distance: number = 1, verbose?:boolean): Promise<boolean> {
-    let coords: Vec3 = target instanceof Vec3 ? target : target.position;
+export async function moveTo(bot: Bot, target: UUID | Vec3, distance: number = 1, verbose?: boolean): Promise<boolean> {
+    let coords = target instanceof Vec3 ? target : uuidToEntity(bot, target)?.position;
+
+    if (!coords){
+        if (verbose) console.log("Entity not found");
+        return false;
+    }
 
     return new Promise((resolve) => {
         function cleanup() {
@@ -66,7 +73,7 @@ export async function moveTo(bot: Bot, target: Block | Entity | Vec3, distance: 
 }
 
 
-export async function breakBlock(bot: Bot, block: Block | Vec3, verbose?:boolean): Promise<boolean> {
+export async function breakBlock(bot: Bot, block: Block | Vec3, verbose?: boolean): Promise<boolean> {
     const to_dig: Block | null = isBlock(block) ? block : bot.blockAt(block);
 
 
@@ -79,21 +86,27 @@ export async function breakBlock(bot: Bot, block: Block | Vec3, verbose?:boolean
     // if the block is differnt than the one we started with we broke it successfully
     let result = bot.blockAt(to_dig.position)
 
-    if (verbose){
+    if (verbose) {
         console.log(`Block to dig is ${to_dig}`);
         console.log(`After digging block is ${result}`);
     }
     return to_dig.type != result?.type;
 }
 
-export async function click(bot: Bot, target: Block | Entity | Vec3, face?: string) {
-    if (isEntity(target)) {
-        return await bot.activateEntity(target);
+export async function click(bot: Bot, target: Block | UUID | Vec3, face?: string, verbose?: boolean) {
+    if (typeof target === "string") {
+        const entity = uuidToEntity(bot, target);
+        if (!entity){
+            if (verbose) console.log("Entity not found");
+            return false;
+        }
+        return await bot.activateEntity(entity);
     }
 
     let block: Block | null = isBlock(target) ? target : bot.blockAt(target);
     if (block) {
-        return await bot.activateBlock(block, nameToFace(face));
+        await bot.activateBlock(block, nameToFace(face));
+        return true;
     }
 }
 
@@ -128,18 +141,31 @@ export async function pickUpLoot(bot: Bot, verbose?: boolean): Promise<boolean> 
     })
 }
 
-export async function attack(bot: Bot, entity: Entity) {
+export async function attack(bot: Bot, target: UUID) {
+    const entity = uuidToEntity(bot, target);
+    if (!entity){
+        return false;
+    }
     await bot.attack(entity);
+    return true;
 }
 
-export async function useOnEntity(bot: Bot, entity: Entity) {
+export async function useOnEntity(bot: Bot, target: UUID) {
+    const entity = uuidToEntity(bot, target);
+    if (!entity){
+        return false;
+    }
     await bot.useOn(entity);
+    return true;
 }
 
-export async function placeBlockOn(bot: Bot, reference: Block, side: string = "top", verbose?: boolean): Promise<boolean> {
+export async function placeBlockOn(bot: Bot, pos: Vec3, side: string = "top", verbose?: boolean): Promise<boolean> {
     const face = nameToFace(side) || new Vec3(0, 1, 0);
-    const pos = reference.position.plus(face)
     const old_block = bot.blockAt(pos);
+
+    if (!old_block){
+        return false;
+    }
 
 
     return new Promise((resolve) => {
@@ -151,13 +177,13 @@ export async function placeBlockOn(bot: Bot, reference: Block, side: string = "t
 
         bot.once(`blockUpdate:${pos}` as any, () => {
             clearTimeout(timeout);
-            const new_block = bot.blockAt(reference.position.plus(face));
+            const new_block = bot.blockAt(pos.plus(face));
 
             if (verbose) console.log(`placed a ${new_block?.type} at ${pos}`);
             resolve(old_block?.type !== new_block?.type);
         })
 
-        bot.placeBlock(reference, face);
+        bot.placeBlock(old_block, face);
     })
 }
 
@@ -204,7 +230,7 @@ export async function checkBlock(bot: Bot, block: Vec3, expeced_block?: string, 
 
 }
 
-export async function checkEntity(bot: Bot, entity: Entity, check: string): Promise<boolean> {
+export async function checkEntity(bot: Bot, target: UUID, check: string): Promise<boolean> {
     return new Promise((resolve) => {
         const timeout = setTimeout(() => {
             resolve(false);
@@ -220,7 +246,7 @@ export async function checkEntity(bot: Bot, entity: Entity, check: string): Prom
             }
         });
 
-        bot.chat(`/execute as ${entity.uuid} if entity @s[nbt=${check}]`)
+        bot.chat(`/execute as ${target} if entity @s[nbt=${check}]`)
     })
 }
 
@@ -251,7 +277,7 @@ export async function selectItem(bot: Bot, element: number | string, verbose?: b
         return true;
     }
 
-    if (verbose){
+    if (verbose) {
         console.log(bot.inventory.items());
     }
 
@@ -286,4 +312,8 @@ function nameToFace(face: string | undefined): Vec3 | undefined {
     };
 
     return faceVectors[face];
+}
+
+function uuidToEntity(bot: Bot, uuid: UUID): Entity | null {
+    return bot.nearestEntity((e) => e.uuid === uuid);
 }

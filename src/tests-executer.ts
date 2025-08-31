@@ -1,0 +1,83 @@
+import type { Bot } from 'mineflayer';
+import type { TestCasesSchema } from './tests-schema.js'
+
+import csv from '@fast-csv/format'
+import fs from 'fs'
+
+import { Vec3 } from 'vec3';
+import { buildLevel } from './level-builder.js';
+
+export async function executeTests(bot: Bot, parsed_tests: TestCasesSchema, output_csv_path?: string): Promise<boolean> {
+    let failed = false;
+    const meta = parsed_tests.meta;
+    const location = new Vec3(meta.x, meta.y || 65, meta.z);
+
+    let csvStream;
+
+    if (output_csv_path) {
+        csvStream = csv.format({ headers: true });
+        const file = fs.createWriteStream(output_csv_path);
+        csvStream.pipe(file);
+    }
+
+    console.log(`Executing test suite ${meta.id}, generated at ${meta.time}`);
+
+    for (const test_case of parsed_tests.test_cases) {
+
+
+        console.log("\nBuilding level");
+
+        const map = await buildLevel(bot, meta.level_csv, location)
+
+        if (parsed_tests.meta.init_commands) {
+            for (const command of parsed_tests.meta.init_commands) {
+                bot.chat(command);
+            }
+        }
+        console.log(`Executing test ${test_case.id}...`);
+
+        try {
+            for (const [i, action] of test_case.actions.entries()) {
+                await bot.waitForTicks(1);
+
+                const startTime = performance.now();
+                console.log(action.name);
+                const res = await action.execute(bot, map);
+
+                if (action.verbose) {
+                    console.log(`test${test_case.id}, action #${i} ${action.name}`);
+                    if (typeof res === "boolean") {
+                        console.log(res ? "  Succeded!" : "  Failed!");
+                    }
+                    console.log(`  took ${performance.now() - startTime} ms`);
+                }
+
+                const passed = action.expect_result === undefined || action.expect_result === res;
+
+                // log everything to a csv
+                csvStream?.write({
+                    "test_run": meta.id,
+                    "test_case": test_case.id,
+                    "action_index": i,
+                    "action": action.name,
+                    "action_details": JSON.stringify(action),
+                    "result": res,
+                    "passed": passed
+                })
+
+                if (!passed) {
+                    throw new Error(`Action #${i} ${JSON.stringify(action)} resulted ${res}`);
+                }
+            }
+            console.log(`Test ${test_case.id} passed!`);
+        } catch (e) {
+            console.error(`Test ${test_case.id} failed because:\n ${e}`);
+            failed = true;
+        }
+    }
+
+    await bot.waitForTicks(20);
+    bot.quit();
+    csvStream?.end();
+    return true;
+}

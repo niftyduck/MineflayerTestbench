@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { Bot } from 'mineflayer';
+import type { Vec3 } from 'vec3';
 
 import { attack, breakBlock, click, moveTo, selectItem, pickUpLoot, placeBlockOn, useOnEntity, checkBlock, checkEntity, jump, checkInventory, sneak } from './abstraction.js'
 
@@ -115,7 +116,7 @@ const CheckBlock = CheckSchema.extend({
 }).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await checkBlock(bot, map[data.target].position, data.expected, data.nbt, data.verbose);
+        return await checkBlock(bot, map[data.target], data.expected, data.nbt, data.verbose);
     }
 }))
 
@@ -150,13 +151,13 @@ export const TestCasesSchema = z.object({
         id: z.string(),
         time: z.iso.datetime({ local: true }),
         x: z.number().int(),
-        y: z.number().int(),
+        y: z.number().int().optional(),
         z: z.number().int(),
-        username: z.string().regex(/^[a-zA-Z0-9_]{3,16}$/),
-        address: z.string(),
+        username: z.string().regex(/^[a-zA-Z0-9_]{3,16}$/).optional(),
+        address: z.string().optional(),
         level_csv: z.string(),
-        rebuild_level: z.boolean(),
-        init_commands: z.array(z.string())
+        output_csv: z.string().optional(),
+        init_commands: z.array(z.string()).optional()
     }),
     test_cases: z.array(
         z.object({
@@ -165,3 +166,5 @@ export const TestCasesSchema = z.object({
         })
     )
 })
+
+export type TestCasesSchema = z.infer<typeof TestCasesSchema>;

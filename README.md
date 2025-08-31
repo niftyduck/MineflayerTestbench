@@ -17,14 +17,15 @@ To actually run the project with default parameters, you can then use
 Supported commmand-line args:
 
 - ***username***: the username for the bot. Defaults to "*Bot*" if unspecified
-- ***level***: path to the csv file of the level, as described in [Level Format](#level-format). Defaults to "*./test.csv*"
+<!-- - ***level***: path to the csv file of the level, as described in [Level Format](#level-format). Defaults to "*./test.csv*" -->
 - ***test***: path to the json file defining the test to be run, as described in [Test file format](#test-file-format). Defaults to "*./test.json*"
-- ***coords***: the coordinates where the test will take place. This refers to the bottom most x,y,z corner of the structure boudning box. Defaults to '32,65,0'
+<!-- - ***coords***: the coordinates where the test will take place. This refers to the bottom most x,y,z corner of the structure boudning box. Defaults to '32,65,0' -->
 - ***address***: the address and port of the Minecraft server, accepts both IPV4 addresses as well as domains in the standard format address:port. Defaults to "*localhost:25565*"
+- ***output_csv***: the file path for the result of the tests, will be stored as a csv, defaults to not logging anything
 
 Example format:
 
-`npm run start address=tortaccia.duckdns.org:25565 username=itsAlisaa coords=32,69,128`
+`npm run start address=tortaccia.duckdns.org:25565 username=itsAlisaa test=./test.json`
 
 ## Minecraft server setup
 For the project to run you will need to set up a local vanilla Minecraft server for the bot to connect to. 
@@ -116,4 +117,26 @@ Examples:
 Note that player entities are excluded `@player^agent` will fail to even place the agent
 
 ## Test file format
-### #TODO not implemented yet
+The test format is .json, it's divided at the top layer into two sections: meta and test_cases, which will be explained separately.
+### meta
+This section contains parameters such as the level path, the position and other information that will be used in place of command line args. Note that if a conflicting command line argument is present, it will override the one present in the meta section.
+
+The following are the supported tags in the meta sextion. Note that some are optional.
+
+- **id**: an id for the current test suite, can be any string.
+- **time**: an ISO8601 compliant datetime stamp of when the file was generated.
+-----------------------
+- **x**: The x, y and z coordinates where the test level will be loaded at.
+- **y**: note that y is optional and will default to 65 unless specified
+- **z**
+- **username**: the username of the bot, optional.
+- **address**: the address of the server, optional.
+- **level_csv**: the path to the level file in the json format described in [Level Format](#level-format)
+- **output_csv**: the output file for the test results, optional.
+- **init_commands**: a list of strings containing commands that will be run after the level is loaded, a bit of a hack.
+
+### test_cases
+Test cases is an array of test cases where each of them is comprised of an **id**, and an array of **actions** that compose the test case.
+
+### actions
+actions are used inside test cases to tell the bot what to do. They all start with a **name** paarameter, and can have a variety of parameters depending on the name

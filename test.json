@@ -5,12 +5,12 @@
         "x": 16,
         "y": 65,
         "z": 0,
-        "username": "Bots",
-        "address": "localhost:25565", 
+        "username": "Bot",
+        "address": "localhost", 
         "level_csv": "./test.csv",
-        "rebuild_level": true,
+        "output_csv": "./test_res.csv",
         "init_commands": [
-            "/blabla"
+            "/say hi"
         ]
     },
     "test_cases": [
