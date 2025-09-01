@@ -1,0 +1,47 @@
+{
+    "meta": {
+        "id": "MC-3697",
+        "time": "2025-09-01T14:32",
+        "x": 16,
+        "y": 65,
+        "z": 0,
+        "username": "Bot",
+        "address": "localhost",
+        "level_csv": "examples/MC-3697.csv",
+        "output_csv": "MC-3697.csv",
+        "init_commands": []
+    },
+    "test_cases": [
+        {
+            "id": "test_1",
+            "actions": [
+                {
+                    "name": "click",
+                    "target": "tnt"
+                },
+                {
+                    "name": "wait",
+                    "ticks": 80
+                },
+                {
+                    "name": "check_entity",
+                    "target": "if1",
+                    "expected": "{}",
+                    "expect_result": true
+                },
+                {
+                    "name": "check_entity",
+                    "target": "i1",
+                    "expected": "{}",
+                    "expect_result": true
+                },
+                {
+                    "name": "check_entity",
+                    "target": "p1",
+                    "expected": "{}",
+                    "expect_result": true
+                }
+            ]
+        }
+    ]
+}
