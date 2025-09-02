@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { Bot } from 'mineflayer';
 import type { Vec3 } from 'vec3';
 
-import { attack, breakBlock, click, moveTo, selectItem, pickUpLoot, placeBlockOn, useOnEntity, checkBlock, checkEntity, jump, checkInventory, sneak } from './abstraction.js'
+import { attack, breakBlock, click, moveTo, selectItem, pickUpLoot, placeBlockOn, useOnEntity, checkBlock, checkEntity, anvil, checkInventory, sneak } from './abstraction.js'
 
 const ActionSchema = z.object({
     name: z.string(),
@@ -26,6 +26,17 @@ const MoveTo = ActionSchema.extend({
         return await moveTo(bot, map[data.target], data.distance, data.verbose);
     }
 }))
+
+const Sneak = ActionSchema.extend({
+    name: z.literal("sneak"),
+    state: z.boolean()
+}).transform((data) => ({
+    ...data,
+    execute: async (bot: Bot, map: any) => {
+        return await sneak(bot, data.state)
+    }
+}))
+
 
 const PickUpLoot = ActionSchema.extend({
     name: z.literal("pick_up_loot"),
@@ -54,6 +65,19 @@ const Break = ActionSchema.extend({
     ...data,
     execute: async (bot: Bot, map: any) => {
         return await breakBlock(bot, map[data.target], data.verbose);
+    }
+}))
+
+const AnvilOperation = ActionSchema.extend({
+    name: z.literal("anvil"),
+    target: z.string(),
+    item_one: z.string().optional(),
+    item_two: z.string().optional(),
+    custom_name: z.string().optional(),
+}).transform((data) => ({
+    ...data,
+    execute: async (bot: Bot, map: any) => {
+        return await anvil(bot, map[data.target], data.item_one, data.item_two, data.custom_name, data.verbose);
     }
 }))
 
@@ -143,7 +167,9 @@ const DiscriminizedActions = z.discriminatedUnion("name", [
     CheckBlock,
     CheckEntity,
     CheckInventory,
-    Attack
+    Attack,
+    Sneak,
+    AnvilOperation
 ])
 
 export const TestCasesSchema = z.object({

@@ -1,14 +1,13 @@
 import type { Bot } from 'mineflayer';
 import { Block } from 'prismarine-block';
 import type { Entity } from 'prismarine-entity';
-import type { Item } from 'prismarine-item';
+import { Item } from 'prismarine-item';
 import pathfinder, { Movements } from 'mineflayer-pathfinder';
 
 import { Vec3 } from 'vec3';
 
 import { isBlock, isEntity } from './type-check.js';
 import { UUID } from 'crypto';
-import { uuid } from 'zod';
 
 const TIMEOUT_PATHFIND = 10000;
 const MAX_PICKUP_RANGE = 5;
@@ -250,6 +249,38 @@ export async function checkEntity(bot: Bot, target: UUID, check: string): Promis
     })
 }
 
+export async function anvil(bot: Bot, anvil_block: Vec3, item_one?: string, item_two?: string, name?: string, verbose?: boolean): Promise<boolean> {
+    const block = bot.blockAt(anvil_block);
+    if (!block){
+        if (verbose) console.log(`No block found at ${anvil_block}`);
+        return false;
+    }
+
+    const anvil = await bot.openAnvil(block);
+
+    let item_1 = item_one ? findItem(bot, item_one) : bot.heldItem; 
+    let item_2 = item_two ? findItem(bot, item_two) : null;
+
+    if (!item_1){
+        if (verbose) console.log("item1 not found");
+        return false;
+    }
+
+    if(!item_2 && !name){
+        if (verbose) console.log("invalid operation, item 2 not found and custom name not provided");
+        return false;
+    }
+
+    if(!item_2){
+        await anvil.rename(item_1, name);
+    } else{
+        await anvil.combine(item_1, item_2, name);
+    }
+
+    (anvil as any).close();
+    return true;
+}
+
 
 export function checkInventory(bot: Bot, item_id: string, count?: number, custom_name?: string, durability?: number, verbose?: boolean) {
     const found: number = bot.inventory.items()
@@ -281,7 +312,7 @@ export async function selectItem(bot: Bot, element: number | string, verbose?: b
         console.log(bot.inventory.items());
     }
 
-    const item: Item = bot.inventory.items().filter(item => item.name === element)?.[0];
+    const item = findItem(bot, element);
     if (!item) {
         return false;
     }
@@ -316,4 +347,17 @@ function nameToFace(face: string | undefined): Vec3 | undefined {
 
 function uuidToEntity(bot: Bot, uuid: UUID): Entity | null {
     return bot.nearestEntity((e) => e.uuid === uuid);
+}
+
+
+function findItem (bot: Bot, name: string): Item | null{
+    const item_by_id = bot.inventory.items().filter(item => item.name === name)[0];
+    if (item_by_id){
+        return item_by_id;
+    }
+    const item_by_name = bot.inventory.items().filter(item => item.customName === name)[0];
+    if (item_by_name){
+        return item_by_name;
+    }
+    return null;
 }

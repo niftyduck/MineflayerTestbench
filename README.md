@@ -30,7 +30,7 @@ Example format:
 ## Minecraft server setup
 For the project to run you will need to set up a local vanilla Minecraft server for the bot to connect to. 
 
-The latest Minecraft version MineFlayer currently supports is [1.21.1](https://www.minecraft.net/en-us/article/minecraft-java-edition-1-21-1).
+The latest Minecraft version MineFlayer currently supports is [1.21.5](https://www.minecraft.net/en-us/article/minecraft-java-edition-1-21-5).
 
 Since the bot doesn't have a linked Microsoft account, you will need to disable authentication which can be done by setting
 
@@ -72,6 +72,8 @@ are all valid examples, the namespace can be omitted, as well as the components 
 A structure has to also be defined in the file. This will be generated at the coordinates decided at runtime and will be constructed inside a Barrier block cage with the minimum size to fit the structure, and height being 3 blocks minimum. Every block and entity inside the bounding box will be deleted. This can be increased by adding empty rows and columns. 
 
 The beginning of the structure section is marked by having a `|` "*pipe*" symbol at the beginning of the line. This symbol will also be used to separate layers of the structure in the y direction, similar as to how it's implemented in [LabRecruits](https://github.com/iv4xr-project/labrecruits/wiki/Defining-a-level). 
+
+When looking at a single layer from above, the top of the csv is North (the z- direction in the in-game axis) 
 
 #### Blocks
 The format for blocks is the same as for the in-game `/setblock` command:

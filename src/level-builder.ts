@@ -12,7 +12,7 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<Rec
 
     const [inventory, structure] = await loadCsv(csv_file);
 
-    // dy must be at least 2 block tall for the bot to fit
+    // dy must be at least 3 block tall for the bot to fit
     const dy: number = Math.max(structure.length, 3);
 
     // since CSVs fill empty cells with commas, we can just use the first line's length
@@ -98,7 +98,7 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<Rec
     }
 
     // delay so entities can spawn and block info is propagated back to the bot
-    await bot.waitForTicks(10);
+    // await bot.waitForTicks(10);
 
     /*// populate map with block or entity instead of just their uuid or position
     for (const tag in map) {

@@ -24,7 +24,6 @@ export async function executeTests(bot: Bot, parsed_tests: TestCasesSchema, outp
 
     for (const test_case of parsed_tests.test_cases) {
 
-
         console.log("\nBuilding level");
 
         const map = await buildLevel(bot, meta.level_csv, location)
@@ -41,7 +40,9 @@ export async function executeTests(bot: Bot, parsed_tests: TestCasesSchema, outp
                 await bot.waitForTicks(1);
 
                 const startTime = performance.now();
-                console.log(action.name);
+
+                // console.log(action.name);
+                
                 const res = await action.execute(bot, map);
 
                 if (action.verbose) {
