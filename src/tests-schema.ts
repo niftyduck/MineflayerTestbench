@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import type { Bot } from 'mineflayer';
-import type { Vec3 } from 'vec3';
 
 import { attack, breakBlock, click, moveTo, selectItem, pickUpLoot, placeBlockOn, useOnEntity, checkBlock, checkEntity, anvil, checkInventory, sneak } from './abstraction.js'
 
@@ -74,7 +73,11 @@ const AnvilOperation = ActionSchema.extend({
     item_one: z.string().optional(),
     item_two: z.string().optional(),
     custom_name: z.string().optional(),
-}).transform((data) => ({
+}).refine((data) => !(!data.item_two && !data.custom_name), 
+    {
+        message: "custom_name is mandatory when item_two is not provided"
+    }
+).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
         return await anvil(bot, map[data.target], data.item_one, data.item_two, data.custom_name, data.verbose);

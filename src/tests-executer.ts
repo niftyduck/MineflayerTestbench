@@ -42,8 +42,13 @@ export async function executeTests(bot: Bot, parsed_tests: TestCasesSchema, outp
                 const startTime = performance.now();
 
                 // console.log(action.name);
+                let res: boolean | void;
                 
-                const res = await action.execute(bot, map);
+                try{
+                    res = await action.execute(bot, map);
+                } catch (e){
+                    throw new Error(`${e}\n\nWhile executing Action #${i} ${JSON.stringify(action)}`)
+                }
 
                 if (action.verbose) {
                     console.log(`test${test_case.id}, action #${i} ${action.name}`);

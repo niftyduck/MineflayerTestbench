@@ -107,6 +107,7 @@ export async function click(bot: Bot, target: Block | UUID | Vec3, face?: string
         await bot.activateBlock(block, nameToFace(face));
         return true;
     }
+    return false;
 }
 
 export async function pickUpLoot(bot: Bot, verbose?: boolean): Promise<boolean> {
@@ -249,6 +250,7 @@ export async function checkEntity(bot: Bot, target: UUID, check: string): Promis
     })
 }
 
+
 export async function anvil(bot: Bot, anvil_block: Vec3, item_one?: string, item_two?: string, name?: string, verbose?: boolean): Promise<boolean> {
     const block = bot.blockAt(anvil_block);
     if (!block){
@@ -276,7 +278,7 @@ export async function anvil(bot: Bot, anvil_block: Vec3, item_one?: string, item
     } else{
         await anvil.combine(item_1, item_2, name);
     }
-
+    
     (anvil as any).close();
     return true;
 }
