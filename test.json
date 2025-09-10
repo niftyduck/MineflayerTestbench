@@ -25,7 +25,7 @@
                 },
                 {
                     "name": "select_item",
-                    "item_id": "iron_axe",
+                    "item": "iron_axe",
                     "expect_result": true
                 },
                 {
@@ -35,7 +35,7 @@
                 },
                 {
                     "name": "select_item",
-                    "item_id": "cake"
+                    "item": "cake"
                 },
                 {
                     "name": "place_block_on",
@@ -44,7 +44,7 @@
                 },
                 {
                     "name": "select_item",
-                    "item_id": "stone"
+                    "item": "stone"
                 },
                 {
                     "name": "place_block_on",
@@ -67,12 +67,12 @@
                 },
                 {
                     "name": "check_inventory",
-                    "expected": "cake",
+                    "item": "cake",
                     "expect_result": false
                 },
                 {
                     "name": "check_inventory",
-                    "expected": "stone",
+                    "item": "stone",
                     "count": 63,
                     "expect_result": true
                 },
@@ -100,7 +100,7 @@
                 {
                     "name": "check_entity",
                     "target": "frank",
-                    "expected": "{Health:10f}",
+                    "nbt": "{Health:10f}",
                     "expect_result": true
                 },
                 {
@@ -110,7 +110,7 @@
                 },
                 {
                     "name": "select_item",
-                    "item_id": "iron_axe",
+                    "item": "iron_axe",
                     "expect_result": true
                 },
                 {
@@ -124,13 +124,13 @@
                 {
                     "name": "check_entity",
                     "target": "frank",
-                    "expected": "{Health:10f}",
+                    "nbt": "{Health:10f}",
                     "expect_result": false
                 },
                 {
                     "name": "check_entity",
                     "target": "frank",
-                    "expected": "{Health:1.0f}",
+                    "health": 1.0,
                     "expect_result": true
                 }
             ]

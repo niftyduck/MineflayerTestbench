@@ -41,13 +41,13 @@ export async function executeTests(bot: Bot, parsed_tests: TestCasesSchema, outp
 
                 const startTime = performance.now();
 
-                // console.log(action.name);
                 let res: boolean | void;
                 
                 try{
                     res = await action.execute(bot, map);
                 } catch (e){
-                    throw new Error(`${e}\n\nWhile executing Action #${i} ${JSON.stringify(action)}`)
+                    console.error(`${e}\nWhile executing Action #${i} ${JSON.stringify(action)}`)
+                    res = false;
                 }
 
                 if (action.verbose) {
@@ -76,14 +76,18 @@ export async function executeTests(bot: Bot, parsed_tests: TestCasesSchema, outp
                 }
             }
             console.log(`Test ${test_case.id} passed!`);
+            bot.chat(`Test ${test_case.id} passed!`);
         } catch (e) {
             console.error(`Test ${test_case.id} failed because:\n ${e}`);
+            bot.chat(`Test ${test_case.id} failed!`);
             failed = true;
         }
     }
-
+    
+    csvStream?.end();
+    
     await bot.waitForTicks(20);
     bot.quit();
-    csvStream?.end();
-    return true;
+    
+    return !failed;
 }

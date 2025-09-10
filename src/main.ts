@@ -9,6 +9,7 @@ import {executeTests} from './tests-executer.js'
 import { setMovements } from './abstraction.js'
 
 import { TestCasesSchema } from './tests-schema.js';
+import { exit } from 'process';
 
 // setup command line args and defaults
 const args: any = getArgs();
@@ -46,6 +47,8 @@ bot.once('spawn', async () => {
 
     await bot.waitForTicks(10);
     setMovements(bot);
-    await executeTests(bot, parsed_tests, output_csv_path);
+    const success: boolean = await executeTests(bot, parsed_tests, output_csv_path);
+
+    exit(success? 0 : 1); //convert boolean to standard bash 0 for all correct 1 for error
 });
 

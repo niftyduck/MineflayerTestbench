@@ -26,19 +26,16 @@
                 {
                     "name": "check_entity",
                     "target": "if1",
-                    "expected": "{}",
                     "expect_result": true
                 },
                 {
                     "name": "check_entity",
                     "target": "i1",
-                    "expected": "{}",
                     "expect_result": true
                 },
                 {
                     "name": "check_entity",
                     "target": "p1",
-                    "expected": "{}",
                     "expect_result": true
                 }
             ]

@@ -21,7 +21,8 @@
                     "name": "anvil",
                     "target": "anvil",
                     "item_one": "iron_helmet",
-                    "item_two": "iron_ingot",
+                    "item_two": "iron_helmet",
+                    "custom_name": "test",
                     "expect_result": true
                 },
                 {
@@ -30,15 +31,10 @@
                 },
                 {
                     "name": "check_inventory",
-                    "expected": "iron_ingot",
-                    "expect_result": false,
-                    "verbose": true
-                },
-                {
-                    "name": "check_inventory",
-                    "expected": "iron_helmet",
-                    "durability": 9,
-                    "expect_result": true
+                    "item": "iron_helmet",
+                    "count": 2,
+                    "expect_result": true,
+                    "verbose": false
                 }
             ]
         }

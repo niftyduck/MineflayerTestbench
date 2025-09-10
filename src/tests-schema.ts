@@ -11,7 +11,6 @@ const ActionSchema = z.object({
 
 
 const CheckSchema = ActionSchema.extend({
-    expected: z.string(),
     expect_result: z.boolean(),
 })
 
@@ -97,11 +96,11 @@ const Click = ActionSchema.extend({
 
 const SelectItem = ActionSchema.extend({
     name: z.literal("select_item"),
-    item_id: z.string(),
+    item: z.string(),
 }).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await selectItem(bot, data.item_id, data.verbose);
+        return await selectItem(bot, data.item, data.verbose);
     }
 }))
 
@@ -117,11 +116,13 @@ const Wait = ActionSchema.extend({
 
 const CheckEntity = CheckSchema.extend({
     name: z.literal("check_entity"),
-    target: z.string()
+    target: z.string(),
+    nbt: z.string().optional(),
+    health: z.float32().optional(),
 }).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await checkEntity(bot, map[data.target], data.expected);
+        return await checkEntity(bot, map[data.target], data.nbt, data.health);
     }
 }))
 
@@ -139,6 +140,7 @@ const Attack = ActionSchema.extend({
 const CheckBlock = CheckSchema.extend({
     name: z.literal("check_block"),
     target: z.string(),
+    expected: z.string(),
     nbt: z.string().optional()
 }).transform((data) => ({
     ...data,
@@ -150,12 +152,13 @@ const CheckBlock = CheckSchema.extend({
 const CheckInventory = CheckSchema.extend({
     name: z.literal("check_inventory"),
     count: z.number().int().optional(),
+    item: z.string(),
     durability: z.number().int().optional(),
     custome_name: z.string().optional()
 }).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return checkInventory(bot, data.expected, data.count, data.custome_name, data.durability, data.verbose);
+        return checkInventory(bot, data.item, data.count, data.custome_name, data.durability, data.verbose);
     }
 }))
 

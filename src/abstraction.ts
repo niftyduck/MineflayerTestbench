@@ -3,6 +3,7 @@ import { Block } from 'prismarine-block';
 import type { Entity } from 'prismarine-entity';
 import { Item } from 'prismarine-item';
 import pathfinder, { Movements } from 'mineflayer-pathfinder';
+import nbtts from "nbt-ts";
 
 import { Vec3 } from 'vec3';
 
@@ -230,7 +231,15 @@ export async function checkBlock(bot: Bot, block: Vec3, expeced_block?: string, 
 
 }
 
-export async function checkEntity(bot: Bot, target: UUID, check: string): Promise<boolean> {
+export async function checkEntity(bot: Bot, target: UUID, nbt?: string, health?: number): Promise<boolean> {
+    let snbt = nbt || "{}";
+
+    if (health !== undefined){
+        const p_nbt = nbtts.parse(snbt);
+        (p_nbt as any).Health = new nbtts.Float(health);
+        snbt = nbtts.stringify(p_nbt);
+    }
+
     return new Promise((resolve) => {
         const timeout = setTimeout(() => {
             resolve(false);
@@ -246,7 +255,7 @@ export async function checkEntity(bot: Bot, target: UUID, check: string): Promis
             }
         });
 
-        bot.chat(`/execute as ${target} if entity @s[nbt=${check}]`)
+        bot.chat(`/execute as ${target} if entity @s[nbt=${snbt}]`)
     })
 }
 
