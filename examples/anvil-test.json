@@ -8,10 +8,7 @@
         "username": "Bot",
         "address": "localhost",
         "level_csv": "examples/anvil-test.csv",
-        "output_csv": "anvil-test.csv",
-        "init_commands": [
-            "/xp add @s 10 levels"
-        ]
+        "output_csv": "anvil-test.csv"
     },
     "test_cases": [
         {

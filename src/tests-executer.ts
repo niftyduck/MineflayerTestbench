@@ -28,11 +28,6 @@ export async function executeTests(bot: Bot, parsed_tests: TestCasesSchema, outp
 
         const map = await buildLevel(bot, meta.level_csv, location)
 
-        if (parsed_tests.meta.init_commands) {
-            for (const command of parsed_tests.meta.init_commands) {
-                bot.chat(command);
-            }
-        }
         console.log(`Executing test ${test_case.id}...`);
 
         try {

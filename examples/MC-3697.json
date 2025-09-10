@@ -8,8 +8,7 @@
         "username": "Bot",
         "address": "localhost",
         "level_csv": "examples/MC-3697.csv",
-        "output_csv": "MC-3697.csv",
-        "init_commands": []
+        "output_csv": "debug_log.csv"
     },
     "test_cases": [
         {

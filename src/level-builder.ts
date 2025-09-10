@@ -27,6 +27,7 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<Rec
     bot.chat(`/fill ${coords.x - 1} ${coords.y - 1} ${coords.z - 1} ${coords.x + dx} ${coords.y + dy} ${coords.z + dz} minecraft:barrier hollow`);
     bot.chat('/clear');
     bot.chat('/xp set @s 0');
+    bot.chat('/xp set @s 0 levels');
     bot.chat('/effect clear @s');
     // execute the kill command multiple times to also kill any items the entities may have dropped
     // also to handle slimes
@@ -89,10 +90,15 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<Rec
 
         // rest of the inventory
         inventory.shift();
+        let slot_number = 0;
         for (const [row, items] of inventory.entries()) {
-            for (const [slot, item] of items.entries()) {
-                const slot_number = row * 9 + slot;
+            for (const item of items) {
+                if (item[0] === "/"){
+                    bot.chat(item);
+                    continue;
+                }
                 bot.chat(`/item replace entity @s inventory.${slot_number} with ${item.trim()}`);
+                slot_number++;
             }
         }
     }

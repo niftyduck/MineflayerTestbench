@@ -1,4 +1,5 @@
 iron_helmet, iron_helmet, iron_ingot
+/xp add @s 10 levels
 |iron_block, iron_block, iron_block
 iron_block, iron_block, iron_block
 iron_block, iron_block, iron_block

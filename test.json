@@ -8,10 +8,7 @@
         "username": "Bot",
         "address": "localhost", 
         "level_csv": "./test.csv",
-        "output_csv": "./test_res.csv",
-        "init_commands": [
-            "/say hi"
-        ]
+        "output_csv": "./debug_log.csv"
     },
     "test_cases": [
         {

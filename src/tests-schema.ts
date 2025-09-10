@@ -189,7 +189,6 @@ export const TestCasesSchema = z.object({
         address: z.string().optional(),
         level_csv: z.string(),
         output_csv: z.string().optional(),
-        init_commands: z.array(z.string()).optional()
     }),
     test_cases: z.array(
         z.object({

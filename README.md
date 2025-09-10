@@ -49,10 +49,9 @@ A sample *test.csv* file is provided to show how a simple level might be designe
 
 ### Inventory
 
-The first row of the file is always assumed to be the hotbar, and as such the first 9 items will be loaded into bot in the correspondin slots.
+The first row of the file is always assumed to be the hotbar, and as such the first 9 items will be loaded into bot in the corresponding slots.
 
-The following up to 3 rows will be treated in a similar way to load the rest of the inventory, starting from the topmost row down.
-Note that unlike for the hotbar, the items can all be placed in one line and they will be loaded as expected. If this is done, further rows in the inventory section are not supported.
+The following rows before the structure section are treated as the rest of the bot's inventory. Items can be layed out in rows or columns as you please and will simply fill the inventory from the top left slot on.
 
 The format of items both in the hotbar is the same as in the `/give command`:
 
@@ -67,6 +66,14 @@ For example:
 `minecraft:cake`
 
 are all valid examples, the namespace can be omitted, as well as the components or the count, which is assumed to be 1 unless specified.
+
+### Init commands
+Commands can also be run by the bot before starting the test, these are inserted after the hotbar section and are identified by beginning with a `/`. They can be used to for example provide the bot with experience points to test anvil usage.
+
+Since they are read after the hotbar, if no hotbar items are provided, a blank line must be left at the top of the csv for these commands to be executed.
+
+Just like for the inventory section, you can put commands either all in the same line or multiple lines, there is no set format.
+Commands are read alongside the inventory, so they can be mixed in with inventory items, but it's not reccommended for readability.
 
 ### Structure
 A structure has to also be defined in the file. This will be generated at the coordinates decided at runtime and will be constructed inside a Barrier block cage with the minimum size to fit the structure, and height being 3 blocks minimum. Every block and entity inside the bounding box will be deleted. This can be increased by adding empty rows and columns. 
@@ -135,7 +142,6 @@ The following are the supported tags in the meta sextion. Note that some are opt
 - **address**: the address of the server, optional.
 - **level_csv**: the path to the level file in the json format described in [Level Format](#level-format)
 - **output_csv**: the output file for the test results, optional.
-- **init_commands**: a list of strings containing commands that will be run after the level is loaded, a bit of a hack.
 
 ### test_cases
 Test cases is an array of test cases where each of them is comprised of an **id**, and an array of **actions** that compose the test case.
