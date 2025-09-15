@@ -14,7 +14,7 @@ import { exit } from 'process';
 // setup command line args and defaults
 const args: any = getArgs();
 
-const tests_json: string = args?.tests || "./test.json";
+const tests_json: string = args?.test || "./test.json";
 const parsed_tests = TestCasesSchema.parse(JSON.parse(fs.readFileSync(tests_json, 'utf8')));
 const meta = parsed_tests.meta;
 const output_csv_path: string | undefined = args?.output_csv || meta.output_csv

@@ -8,7 +8,7 @@
         "username": "Bot",
         "address": "localhost",
         "level_csv": "examples/anvil-test.csv",
-        "output_csv": "anvil-test.csv"
+        "output_csv": "debug_log.csv"
     },
     "test_cases": [
         {

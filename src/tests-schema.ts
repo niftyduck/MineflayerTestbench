@@ -46,7 +46,7 @@ const PickUpLoot = ActionSchema.extend({
 }))
 
 const PlaceBlockOn = ActionSchema.extend({
-    name: z.literal("place_block_on"),
+    name: z.literal("place"),
     target: z.string(),
     face: z.string(),
 }).transform((data) => ({
@@ -72,7 +72,7 @@ const AnvilOperation = ActionSchema.extend({
     item_one: z.string().optional(),
     item_two: z.string().optional(),
     custom_name: z.string().optional(),
-}).refine((data) => !(!data.item_two && !data.custom_name), 
+}).refine((data) => !(!data.item_two && !data.custom_name),
     {
         message: "custom_name is mandatory when item_two is not provided"
     }
@@ -93,9 +93,8 @@ const Click = ActionSchema.extend({
     }
 }))
 
-
 const SelectItem = ActionSchema.extend({
-    name: z.literal("select_item"),
+    name: z.literal("select"),
     item: z.string(),
 }).transform((data) => ({
     ...data,
@@ -114,6 +113,19 @@ const Wait = ActionSchema.extend({
     }
 }))
 
+const Attack = ActionSchema.extend({
+    name: z.literal("attack"),
+    target: z.string()
+}).transform((data) => ({
+    ...data,
+    execute: async (bot: Bot, map: any) => {
+        return await attack(bot, map[data.target]);
+    }
+}))
+
+
+// checks
+
 const CheckEntity = CheckSchema.extend({
     name: z.literal("check_entity"),
     target: z.string(),
@@ -125,17 +137,6 @@ const CheckEntity = CheckSchema.extend({
         return await checkEntity(bot, map[data.target], data.nbt, data.health);
     }
 }))
-
-const Attack = ActionSchema.extend({
-    name: z.literal("attack"),
-    target: z.string()
-}).transform((data) => ({
-    ...data,
-    execute: async (bot: Bot, map: any) => {
-        return await attack(bot, map[data.target]);
-    }
-}))
-
 
 const CheckBlock = CheckSchema.extend({
     name: z.literal("check_block"),
@@ -153,14 +154,44 @@ const CheckInventory = CheckSchema.extend({
     name: z.literal("check_inventory"),
     count: z.number().int().optional(),
     item: z.string(),
-    durability: z.number().int().optional(),
-    custome_name: z.string().optional()
+    damage: z.number().int().optional(),
+    custom_name: z.string().optional()
 }).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return checkInventory(bot, data.item, data.count, data.custome_name, data.durability, data.verbose);
+        const { name, count, verbose, expect_result, item, ...params } = data;
+        const components: string[] = [];
+
+        for (const [key, value] of Object.entries(params)) {
+            if (value !== undefined && value !== null) {
+                components.push(`${key}=${value}`);
+            }
+        }
+        return checkInventory(bot, data.item, data.count, components, data.verbose);
     }
 }))
+
+
+// NO-OPS
+const Pass = ActionSchema.extend({
+    name: z.literal("pass")
+}).transform((data) => ({
+    ...data,
+    execute: async (bot: Bot, map: any) => {
+        return;
+    }
+}))
+
+const Fail = ActionSchema.extend({
+    name: z.literal("fail")
+}).transform((data) => ({
+    ...data,
+    expect_result: true,
+    execute: async (bot: Bot, map: any) => {
+        return false;
+    }
+}))
+
 
 const DiscriminizedActions = z.discriminatedUnion("name", [
     Wait,
@@ -170,12 +201,18 @@ const DiscriminizedActions = z.discriminatedUnion("name", [
     PickUpLoot,
     PlaceBlockOn,
     Click,
+    Attack,
+    Sneak,
+    AnvilOperation,
+
+    // check
     CheckBlock,
     CheckEntity,
     CheckInventory,
-    Attack,
-    Sneak,
-    AnvilOperation
+
+    // NO-OPS
+    Pass,
+    Fail,
 ])
 
 export const TestCasesSchema = z.object({

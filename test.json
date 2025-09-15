@@ -21,7 +21,7 @@
                     "verbose": true
                 },
                 {
-                    "name": "select_item",
+                    "name": "select",
                     "item": "iron_axe",
                     "expect_result": true
                 },
@@ -31,11 +31,11 @@
                     "expect_result": true
                 },
                 {
-                    "name": "select_item",
+                    "name": "select",
                     "item": "cake"
                 },
                 {
-                    "name": "place_block_on",
+                    "name": "place",
                     "target": "below_chest",
                     "face": "top"
                 },
@@ -44,7 +44,7 @@
                     "item": "stone"
                 },
                 {
-                    "name": "place_block_on",
+                    "name": "place",
                     "target": "place",
                     "face": "south"
                 },

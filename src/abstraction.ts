@@ -31,7 +31,7 @@ export function setMovements(bot: Bot) {
 export async function moveTo(bot: Bot, target: UUID | Vec3, distance: number = 1, verbose?: boolean): Promise<boolean> {
     let coords = target instanceof Vec3 ? target : uuidToEntity(bot, target)?.position;
 
-    if (!coords){
+    if (!coords) {
         if (verbose) console.log("Entity not found");
         return false;
     }
@@ -96,7 +96,7 @@ export async function breakBlock(bot: Bot, block: Block | Vec3, verbose?: boolea
 export async function click(bot: Bot, target: Block | UUID | Vec3, face?: string, verbose?: boolean) {
     if (typeof target === "string") {
         const entity = uuidToEntity(bot, target);
-        if (!entity){
+        if (!entity) {
             if (verbose) console.log("Entity not found");
             return false;
         }
@@ -144,7 +144,7 @@ export async function pickUpLoot(bot: Bot, verbose?: boolean): Promise<boolean> 
 
 export async function attack(bot: Bot, target: UUID) {
     const entity = uuidToEntity(bot, target);
-    if (!entity){
+    if (!entity) {
         return false;
     }
     await bot.attack(entity);
@@ -153,7 +153,7 @@ export async function attack(bot: Bot, target: UUID) {
 
 export async function useOnEntity(bot: Bot, target: UUID) {
     const entity = uuidToEntity(bot, target);
-    if (!entity){
+    if (!entity) {
         return false;
     }
     await bot.useOn(entity);
@@ -164,7 +164,7 @@ export async function placeBlockOn(bot: Bot, pos: Vec3, side: string = "top", ve
     const face = nameToFace(side) || new Vec3(0, 1, 0);
     const old_block = bot.blockAt(pos);
 
-    if (!old_block){
+    if (!old_block) {
         return false;
     }
 
@@ -234,7 +234,7 @@ export async function checkBlock(bot: Bot, block: Vec3, expeced_block?: string, 
 export async function checkEntity(bot: Bot, target: UUID, nbt?: string, health?: number): Promise<boolean> {
     let snbt = nbt || "{}";
 
-    if (health !== undefined){
+    if (health !== undefined) {
         const p_nbt = nbtts.parse(snbt);
         (p_nbt as any).Health = new nbtts.Float(health);
         snbt = nbtts.stringify(p_nbt);
@@ -262,55 +262,61 @@ export async function checkEntity(bot: Bot, target: UUID, nbt?: string, health?:
 
 export async function anvil(bot: Bot, anvil_block: Vec3, item_one?: string, item_two?: string, name?: string, verbose?: boolean): Promise<boolean> {
     const block = bot.blockAt(anvil_block);
-    if (!block){
+    if (!block) {
         if (verbose) console.log(`No block found at ${anvil_block}`);
         return false;
     }
 
     const anvil = await bot.openAnvil(block);
 
-    let item_1 = item_one ? findItem(bot, item_one) : bot.heldItem; 
+    let item_1 = item_one ? findItem(bot, item_one) : bot.heldItem;
     let item_2 = item_two ? findItem(bot, item_two) : null;
 
-    if (!item_1){
+    if (!item_1) {
         if (verbose) console.log("item1 not found");
         return false;
     }
 
-    if(!item_2 && !name){
+    if (!item_2 && !name) {
         if (verbose) console.log("invalid operation, item 2 not found and custom name not provided");
         return false;
     }
 
-    if(!item_2){
+    if (!item_2) {
         await anvil.rename(item_1, name);
-    } else{
+    } else {
         await anvil.combine(item_1, item_2, name);
     }
-    
+
     (anvil as any).close();
     return true;
 }
 
 
-export function checkInventory(bot: Bot, item_id: string, count?: number, custom_name?: string, durability?: number, verbose?: boolean) {
-    const found: number = bot.inventory.items()
-        .filter(item => item.name === item_id)
-        .filter(item => !custom_name || item.customName === custom_name)
-        .filter(item => !durability || item.durabilityUsed === durability)
-        .map(item => item.count)
-        .reduce((sum, current) => sum + current, 0);
+export async function checkInventory(bot: Bot, item_id: string, count?: number, components?: string[], verbose?: boolean): Promise<boolean> {
+    const command = `/execute if items entity @s container.* ${item_id}[${components?.join(",") || ""}]`
 
-    if (verbose) {
-        console.log(`Found ${found} matching items in inventory`);
-        console.log(bot.inventory.items());
-    }
+    return new Promise((resolve) => {    
+        const timeout = setTimeout(() => {
+            resolve(false);
+            bot.removeAllListeners("message");
+        }, SHORT_TIMEOUT);
 
+        bot.once("message", (msg) => {
+            clearTimeout(timeout);
+            if (msg?.translate === "commands.execute.conditional.pass_count") {
+                if (count === undefined){
+                    resolve(true);
+                    return;
+                }
+                resolve(msg.json.with[0] === count);
+            } else {
+                resolve(false);
+            }
+        });
 
-    if (count) {
-        return found === count;
-    }
-    return found > 0;
+        bot.chat(command)
+    })
 }
 
 export async function selectItem(bot: Bot, element: number | string, verbose?: boolean): Promise<boolean> {
@@ -361,13 +367,13 @@ function uuidToEntity(bot: Bot, uuid: UUID): Entity | null {
 }
 
 
-function findItem (bot: Bot, name: string): Item | null{
+function findItem(bot: Bot, name: string): Item | null {
     const item_by_id = bot.inventory.items().filter(item => item.name === name)[0];
-    if (item_by_id){
+    if (item_by_id) {
         return item_by_id;
     }
     const item_by_name = bot.inventory.items().filter(item => item.customName === name)[0];
-    if (item_by_name){
+    if (item_by_name) {
         return item_by_name;
     }
     return null;
