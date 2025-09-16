@@ -168,24 +168,9 @@ export async function placeBlockOn(bot: Bot, pos: Vec3, side: string = "top", ve
         return false;
     }
 
+    await bot.placeBlock(old_block, face);
 
-    return new Promise((resolve) => {
-        const timeout = setTimeout(() => {
-            bot.removeAllListeners(`blockUpdate:${pos}` as any);
-            if (verbose) console.log("Timed out on placeblock");
-            resolve(false);
-        }, SHORT_TIMEOUT);
-
-        bot.once(`blockUpdate:${pos}` as any, () => {
-            clearTimeout(timeout);
-            const new_block = bot.blockAt(pos.plus(face));
-
-            if (verbose) console.log(`placed a ${new_block?.type} at ${pos}`);
-            resolve(old_block?.type !== new_block?.type);
-        })
-
-        bot.placeBlock(old_block, face);
-    })
+    return bot.blockAt(pos)?.type == old_block.type;
 }
 
 export async function jump(bot: Bot) {
@@ -293,10 +278,19 @@ export async function anvil(bot: Bot, anvil_block: Vec3, item_one?: string, item
 }
 
 
-export async function checkInventory(bot: Bot, item_id: string, count?: number, components?: string[], verbose?: boolean): Promise<boolean> {
-    const command = `/execute if items entity @s container.* ${item_id}[${components?.join(",") || ""}]`
+export async function checkInventory(bot: Bot, item_id: string, count?: number, rawcomponents?: any, verbose?: boolean): Promise<boolean> {
 
-    return new Promise((resolve) => {    
+    const components: string[] = [];
+
+    for (const [key, value] of Object.entries(rawcomponents)) {
+        if (value !== undefined && value !== null) {
+            components.push(`${key}=${value}`);
+        }
+    }
+
+    const command = `/execute if items entity @s container.* ${item_id}[${components?.join(",") || ""}]`;
+
+    return new Promise((resolve) => {
         const timeout = setTimeout(() => {
             resolve(false);
             bot.removeAllListeners("message");
@@ -305,7 +299,7 @@ export async function checkInventory(bot: Bot, item_id: string, count?: number, 
         bot.once("message", (msg) => {
             clearTimeout(timeout);
             if (msg?.translate === "commands.execute.conditional.pass_count") {
-                if (count === undefined){
+                if (count === undefined) {
                     resolve(true);
                     return;
                 }

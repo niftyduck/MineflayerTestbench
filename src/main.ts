@@ -29,8 +29,8 @@ const bot = mineflayer.createBot({
 bot.loadPlugin(pathfinder.pathfinder);
 
 // Log errors and kick reasons:
-bot.on('kicked', console.log);
-bot.on('error', console.log);
+bot.on('kicked', (m) => {console.log(m), exit(3)});
+bot.on('error', (m) => {console.log(m), exit(4)});
 
 bot.once('spawn', async () => {
     if (!await isOp(bot)) {

@@ -159,15 +159,9 @@ const CheckInventory = CheckSchema.extend({
 }).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
+        // unpack everything and only keep the empty params
         const { name, count, verbose, expect_result, item, ...params } = data;
-        const components: string[] = [];
-
-        for (const [key, value] of Object.entries(params)) {
-            if (value !== undefined && value !== null) {
-                components.push(`${key}=${value}`);
-            }
-        }
-        return checkInventory(bot, data.item, data.count, components, data.verbose);
+        return checkInventory(bot, item, count, params, verbose);
     }
 }))
 
