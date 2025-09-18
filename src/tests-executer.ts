@@ -10,7 +10,7 @@ import { buildLevel } from './level-builder.js';
 export async function executeTests(bot: Bot, parsed_tests: TestCasesSchema, output_csv_path?: string): Promise<boolean> {
     let failed = false;
     const meta = parsed_tests.meta;
-    const location = new Vec3(meta.x, meta.y || 65, meta.z);
+    const location = new Vec3(meta.x, meta.y || 64, meta.z);
 
     let csvStream;
 

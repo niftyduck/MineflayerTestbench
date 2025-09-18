@@ -11,7 +11,7 @@ const ActionSchema = z.object({
 
 
 const CheckSchema = ActionSchema.extend({
-    expect_result: z.boolean(),
+    expect_result: z.boolean().default(true),
 })
 
 const MoveTo = ActionSchema.extend({

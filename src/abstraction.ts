@@ -303,9 +303,10 @@ export async function checkInventory(bot: Bot, item_id: string, count?: number, 
                     resolve(true);
                     return;
                 }
-                resolve(msg.json.with[0] === count);
+                resolve(msg.json.with[0] == count);
             } else {
-                resolve(false);
+                // if none are found, should return true if we expect to find zero items
+                resolve(count !== 0);
             }
         });
 
