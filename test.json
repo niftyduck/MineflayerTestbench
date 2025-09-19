@@ -40,7 +40,7 @@
                     "face": "top"
                 },
                 {
-                    "name": "select_item",
+                    "name": "select",
                     "item": "stone"
                 },
                 {
@@ -49,8 +49,7 @@
                     "face": "south"
                 },
                 {
-                    "name": "pick_up_loot",
-                    "expect_result": true
+                    "name": "pick_up_loot"
                 },
                 {
                     "name": "check_block",
@@ -106,7 +105,7 @@
                     "expect_result": true
                 },
                 {
-                    "name": "select_item",
+                    "name": "select",
                     "item": "iron_axe",
                     "expect_result": true
                 },

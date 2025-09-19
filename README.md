@@ -97,6 +97,16 @@ For example:
 
 *NOTE: some blocks that require top or side support might not be spawned in successfully in some situations due to how the level is built from bottom to top. This has not been tested for all blocks in all positions.* 
 
+##### Deferred block placement
+To avoid the previously stated limitation, a simple workaround was included, which is block placement defferal. By prepending a `!` question mark to the block definiton, that specific block will be placed after 100ms, which is usually enough to guarantee any supporting blocks are already placed 
+
+For example:
+
+`!rail`
+
+`!minecraft:lantern[hanging=true]`
+
+
 #### Entities
 Entities are maked by starting with an `@` symbol and use the following format:
 

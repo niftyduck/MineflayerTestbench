@@ -67,9 +67,10 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<Rec
                     continue;
                 }
 
-
-                // otherwise assume it's a block
-                if (thing) {
+                //defer block placement
+                if (thing[0] === "!"){
+                    setTimeout(()=>bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${thing.substring(1)}`), 100);
+                } else if (thing) {
                     bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${thing}`);
                 }
 
