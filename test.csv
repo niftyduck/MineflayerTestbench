@@ -1,8 +1,10 @@
-iron_pickaxe,golden_apple,stone 64,anvil 10,,
+diamond_pickaxe,iron_axe,stone 64,anvil 10,,
 acacia_boat,cake,,,,
+/say hi
 |stone,stone,stone,stone,stone,stone
 stone,stone,stone,stone,stone,stone
 stone,stone,stone,stone,stone,stone
+stone,stone,stone,stone^below_chest,stone,stone
 stone,stone,stone,stone,stone,stone
 stone,stone,stone,stone,stone,stone
 stone,stone,stone,stone,stone,stone
@@ -13,8 +15,7 @@ stone,stone,stone,stone,stone,stone
 stone,stone,stone,stone,stone,stone
 stone,stone,stone,stone,stone,stone
 stone,stone,stone,stone,stone,stone
-stone,stone,stone,stone,stone,stone
-|iron_block,iron_block,iron_block,iron_block,iron_block,iron_block
+|iron_block,iron_block,iron_block^place,iron_block,iron_block,iron_block
 ,,,,,iron_block
 ,,,,,iron_block
 ,,,chest[facing=south]^chest,,iron_block
@@ -24,7 +25,7 @@ stone,stone,stone,stone,stone,stone
 ,,@player,@minecraft:bee{NoAI:1b}^frank,,iron_block
 ,,,,,iron_block
 ,,,,,iron_block
-copper_bulb,acacia_button^btn,,,,iron_block
+waxed_copper_bulb^bulb,acacia_button[facing=east]^btn,,,,iron_block
 ,,,,,iron_block
 ,,,,,iron_block
 ,,,,,iron_block

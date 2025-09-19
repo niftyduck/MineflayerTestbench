@@ -1,0 +1,15 @@
+flint_and_steel,,,,
+|iron_block,iron_block,iron_block,iron_block,iron_block
+iron_block,water,water,water,iron_block
+iron_block,water,water,water,iron_block
+iron_block,water,water,water,iron_block
+iron_block,iron_block,iron_block,iron_block,iron_block
+iron_block,iron_block,iron_block,iron_block,iron_block
+iron_block,iron_block,iron_block,iron_block,iron_block
+iron_block,iron_block,iron_block,iron_block,iron_block
+|,,@painting^p1,,
+,,,,
+"@item{Item:{id:""minecraft:diamond"",count:1}}^i1",,tnt^tnt,,@item_frame{Facing:4b}^if1
+,,,,
+,,obsidian,,
+,,@player,,

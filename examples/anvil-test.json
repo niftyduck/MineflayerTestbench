@@ -1,0 +1,39 @@
+{
+    "meta": {
+        "id": "Anvil-test",
+        "time": "2025-09-02T13:42",
+        "x": 16,
+        "y": 65,
+        "z": 0,
+        "username": "Bot",
+        "address": "localhost",
+        "level_csv": "examples/anvil-test.csv",
+        "output_csv": "debug_log.csv"
+    },
+    "test_cases": [
+        {
+            "id": "test_1",
+            "actions": [
+                {
+                    "name": "anvil",
+                    "target": "anvil",
+                    "item_one": "iron_helmet",
+                    "item_two": "iron_helmet",
+                    "custom_name": "test",
+                    "expect_result": true
+                },
+                {
+                    "name": "wait",
+                    "ticks": 20
+                },
+                {
+                    "name": "check_inventory",
+                    "item": "iron_helmet",
+                    "count": 2,
+                    "expect_result": true,
+                    "verbose": false
+                }
+            ]
+        }
+    ]
+}

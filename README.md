@@ -17,19 +17,20 @@ To actually run the project with default parameters, you can then use
 Supported commmand-line args:
 
 - ***username***: the username for the bot. Defaults to "*Bot*" if unspecified
-- ***level***: path to the csv file of the level, as described in [Level Format](#level-format). Defaults to "*./test.csv*"
+<!-- - ***level***: path to the csv file of the level, as described in [Level Format](#level-format). Defaults to "*./test.csv*" -->
 - ***test***: path to the json file defining the test to be run, as described in [Test file format](#test-file-format). Defaults to "*./test.json*"
-- ***coords***: the coordinates where the test will take place. This refers to the bottom most x,y,z corner of the structure boudning box. Defaults to '32,65,0'
+<!-- - ***coords***: the coordinates where the test will take place. This refers to the bottom most x,y,z corner of the structure boudning box. Defaults to '32,65,0' -->
 - ***address***: the address and port of the Minecraft server, accepts both IPV4 addresses as well as domains in the standard format address:port. Defaults to "*localhost:25565*"
+- ***output_csv***: the file path for the result of the tests, will be stored as a csv, defaults to not logging anything
 
 Example format:
 
-`npm run start address=tortaccia.duckdns.org:25565 username=itsAlisaa coords=32,69,128`
+`npm run start address=tortaccia.duckdns.org:25565 username=itsAlisaa test=./test.json`
 
 ## Minecraft server setup
 For the project to run you will need to set up a local vanilla Minecraft server for the bot to connect to. 
 
-The latest Minecraft version MineFlayer currently supports is [1.21.1](https://www.minecraft.net/en-us/article/minecraft-java-edition-1-21-1).
+The latest Minecraft version MineFlayer currently supports is [1.21.5](https://www.minecraft.net/en-us/article/minecraft-java-edition-1-21-5).
 
 Since the bot doesn't have a linked Microsoft account, you will need to disable authentication which can be done by setting
 
@@ -48,10 +49,9 @@ A sample *test.csv* file is provided to show how a simple level might be designe
 
 ### Inventory
 
-The first row of the file is always assumed to be the hotbar, and as such the first 9 items will be loaded into bot in the correspondin slots.
+The first row of the file is always assumed to be the hotbar, and as such the first 9 items will be loaded into bot in the corresponding slots.
 
-The following up to 3 rows will be treated in a similar way to load the rest of the inventory, starting from the topmost row down.
-Note that unlike for the hotbar, the items can all be placed in one line and they will be loaded as expected. If this is done, further rows in the inventory section are not supported.
+The following rows before the structure section are treated as the rest of the bot's inventory. Items can be layed out in rows or columns as you please and will simply fill the inventory from the top left slot on.
 
 The format of items both in the hotbar is the same as in the `/give command`:
 
@@ -67,10 +67,20 @@ For example:
 
 are all valid examples, the namespace can be omitted, as well as the components or the count, which is assumed to be 1 unless specified.
 
+### Init commands
+Commands can also be run by the bot before starting the test, these are inserted after the hotbar section and are identified by beginning with a `/`. They can be used to for example provide the bot with experience points to test anvil usage.
+
+Since they are read after the hotbar, if no hotbar items are provided, a blank line must be left at the top of the csv for these commands to be executed.
+
+Just like for the inventory section, you can put commands either all in the same line or multiple lines, there is no set format.
+Commands are read alongside the inventory, so they can be mixed in with inventory items, but it's not reccommended for readability.
+
 ### Structure
 A structure has to also be defined in the file. This will be generated at the coordinates decided at runtime and will be constructed inside a Barrier block cage with the minimum size to fit the structure, and height being 3 blocks minimum. Every block and entity inside the bounding box will be deleted. This can be increased by adding empty rows and columns. 
 
 The beginning of the structure section is marked by having a `|` "*pipe*" symbol at the beginning of the line. This symbol will also be used to separate layers of the structure in the y direction, similar as to how it's implemented in [LabRecruits](https://github.com/iv4xr-project/labrecruits/wiki/Defining-a-level). 
+
+When looking at a single layer from above, the top of the csv is North (the z- direction in the in-game axis) 
 
 #### Blocks
 The format for blocks is the same as for the in-game `/setblock` command:
@@ -86,6 +96,16 @@ For example:
 `hopper{Items:[{Slot:0b,id:"minecraft:stone",count:1}]}`
 
 *NOTE: some blocks that require top or side support might not be spawned in successfully in some situations due to how the level is built from bottom to top. This has not been tested for all blocks in all positions.* 
+
+##### Deferred block placement
+To avoid the previously stated limitation, a simple workaround was included, which is block placement defferal. By prepending a `!` question mark to the block definiton, that specific block will be placed after 100ms, which is usually enough to guarantee any supporting blocks are already placed 
+
+For example:
+
+`!rail`
+
+`!minecraft:lantern[hanging=true]`
+
 
 #### Entities
 Entities are maked by starting with an `@` symbol and use the following format:
@@ -116,4 +136,25 @@ Examples:
 Note that player entities are excluded `@player^agent` will fail to even place the agent
 
 ## Test file format
-### #TODO not implemented yet
+The test format is .json, it's divided at the top layer into two sections: meta and test_cases, which will be explained separately.
+### meta
+This section contains parameters such as the level path, the position and other information that will be used in place of command line args. Note that if a conflicting command line argument is present, it will override the one present in the meta section.
+
+The following are the supported tags in the meta sextion. Note that some are optional.
+
+- **id**: an id for the current test suite, can be any string.
+- **time**: an ISO8601 compliant datetime stamp of when the file was generated.
+-----------------------
+- **x**: The x, y and z coordinates where the test level will be loaded at.
+- **y**: note that y is optional and will default to 65 unless specified
+- **z**
+- **username**: the username of the bot, optional.
+- **address**: the address of the server, optional.
+- **level_csv**: the path to the level file in the json format described in [Level Format](#level-format)
+- **output_csv**: the output file for the test results, optional.
+
+### test_cases
+Test cases is an array of test cases where each of them is comprised of an **id**, and an array of **actions** that compose the test case.
+
+### actions
+actions are used inside test cases to tell the bot what to do. They all start with a **name** paarameter, and can have a variety of parameters depending on the name

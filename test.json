@@ -1,0 +1,135 @@
+{
+    "meta": {
+        "id": "hahahdds",
+        "time": "2025-08-01T20:12",
+        "x": 16,
+        "y": 65,
+        "z": 0,
+        "username": "Bot",
+        "address": "localhost", 
+        "level_csv": "./test.csv",
+        "output_csv": "./debug_log.csv"
+    },
+    "test_cases": [
+        {
+            "id": "122",
+            "actions": [
+                {
+                    "name": "move_to",
+                    "target": "chest",
+                    "expect_result": true,
+                    "verbose": true
+                },
+                {
+                    "name": "select",
+                    "item": "iron_axe",
+                    "expect_result": true
+                },
+                {
+                    "name": "break",
+                    "target": "chest",
+                    "expect_result": true
+                },
+                {
+                    "name": "select",
+                    "item": "cake"
+                },
+                {
+                    "name": "place",
+                    "target": "below_chest",
+                    "face": "top"
+                },
+                {
+                    "name": "select",
+                    "item": "stone"
+                },
+                {
+                    "name": "place",
+                    "target": "place",
+                    "face": "south"
+                },
+                {
+                    "name": "pick_up_loot"
+                },
+                {
+                    "name": "check_block",
+                    "target": "chest",
+                    "expected": "cake",
+                    "expect_result": true
+                },
+                {
+                    "name": "wait",
+                    "ticks": 15
+                },
+                {
+                    "name": "check_inventory",
+                    "item": "cake",
+                    "expect_result": false
+                },
+                {
+                    "name": "check_inventory",
+                    "item": "stone",
+                    "count": 63,
+                    "expect_result": true
+                },
+                {
+                    "name": "check_block",
+                    "target": "chest",
+                    "expected": "chest",
+                    "expect_result": false
+                },
+                {
+                    "name": "move_to",
+                    "target": "btn",
+                    "expect_result": true
+                },
+                {
+                    "name": "click",
+                    "target": "btn"
+                },
+                {
+                    "name": "check_block",
+                    "target": "bulb",
+                    "expected": "waxed_copper_bulb[lit=true]",
+                    "expect_result": true
+                },
+                {
+                    "name": "check_entity",
+                    "target": "frank",
+                    "nbt": "{Health:10f}",
+                    "expect_result": true
+                },
+                {
+                    "name": "move_to",
+                    "target": "frank",
+                    "expect_result": true
+                },
+                {
+                    "name": "select",
+                    "item": "iron_axe",
+                    "expect_result": true
+                },
+                {
+                    "name": "wait",
+                    "ticks": 30
+                },
+                {
+                    "name": "attack",
+                    "target": "frank"
+                },
+                {
+                    "name": "check_entity",
+                    "target": "frank",
+                    "nbt": "{Health:10f}",
+                    "expect_result": false
+                },
+                {
+                    "name": "check_entity",
+                    "target": "frank",
+                    "health": 1.0,
+                    "expect_result": true
+                }
+            ]
+        }
+    ]
+}

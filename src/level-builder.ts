@@ -2,17 +2,17 @@ import fs from 'fs';
 import csv from '@fast-csv/parse';
 import nbtts from "nbt-ts";
 import { Vec3 } from 'vec3';
-import { v4 as uuidv4 } from 'uuid';
 import type { Bot } from 'mineflayer';
+import { UUID } from 'crypto';
 
 // Coords should be a vec3 of the bottom xyz corner of the level
-async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<any> {
+async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<Record<string, Vec3 | UUID>> {
     bot.chat('/gamemode spectator @s');
     bot.chat(`/tp @s ${coords.x} ${coords.y} ${coords.z}`);
 
     const [inventory, structure] = await loadCsv(csv_file);
 
-    // dy must be at least 2 block tall for the bot to fit
+    // dy must be at least 3 block tall for the bot to fit
     const dy: number = Math.max(structure.length, 3);
 
     // since CSVs fill empty cells with commas, we can just use the first line's length
@@ -21,13 +21,13 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<any
     // find longest row for the z dimension
     const dz: number = Math.max(...structure.map((a: string[][]) => a.length));
 
-
     await bot.waitForChunksToLoad();
 
     // clear out area and surrouns with barriers
     bot.chat(`/fill ${coords.x - 1} ${coords.y - 1} ${coords.z - 1} ${coords.x + dx} ${coords.y + dy} ${coords.z + dz} minecraft:barrier hollow`);
     bot.chat('/clear');
     bot.chat('/xp set @s 0');
+    bot.chat('/xp set @s 0 levels');
     bot.chat('/effect clear @s');
     // execute the kill command multiple times to also kill any items the entities may have dropped
     // also to handle slimes
@@ -37,32 +37,45 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<any
     bot.chat(kill_cmd);
     bot.chat(kill_cmd);
 
-    const map: any = {};
+    const map: Record<string, Vec3 | UUID> = {};
 
     for (const [dy, layer] of structure.entries()) {
         for (const [dz, line] of layer.entries()) {
             for (const [dx, entry] of line.entries()) {
-                const [thing, tag] = getTag(entry.trim());
                 // skip empty blocks
-                if (!thing)
+                if (!entry) {
                     continue;
+                }
+
+                const [thing, tag] = getTag(entry.trim());
+
 
                 const pos: Vec3 = new Vec3(coords.x + dx, coords.y + dy, coords.z + dz);
-                if (thing == "@player"){
+
+                if (thing == "@player") {
                     bot.chat(`/tp @s ${pos.x} ${pos.y} ${pos.z}`)
-                    // if it starts with @ it's an entity
-                } else if (thing[0] === "@") {
+                    continue;
+                }
+
+                // if it starts with @ it's an entity
+                if (thing[0] === "@") {
                     let entity_id: string = thing.substring(1);
                     let uuid = await summonEntity(entity_id, pos, bot, tag);
                     if (tag && uuid) {
                         map[tag] = uuid;
                     }
-                } else {
-                    // otherwise assume it's a block
+                    continue;
+                }
+
+                //defer block placement
+                if (thing[0] === "!"){
+                    setTimeout(()=>bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${thing.substring(1)}`), 100);
+                } else if (thing) {
                     bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${thing}`);
-                    if (tag) {
-                        map[tag] = pos;
-                    }
+                }
+
+                if (tag) {
+                    map[tag] = pos;
                 }
 
             }
@@ -78,18 +91,23 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<any
 
         // rest of the inventory
         inventory.shift();
+        let slot_number = 0;
         for (const [row, items] of inventory.entries()) {
-            for (const [slot, item] of items.entries()) {
-                const slot_number = row * 9 + slot;
+            for (const item of items) {
+                if (item[0] === "/"){
+                    bot.chat(item);
+                    continue;
+                }
                 bot.chat(`/item replace entity @s inventory.${slot_number} with ${item.trim()}`);
+                slot_number++;
             }
         }
     }
 
     // delay so entities can spawn and block info is propagated back to the bot
-    await bot.waitForTicks(10);
+    // await bot.waitForTicks(10);
 
-    // populate map with block or entity instead of just their uuid or position
+    /*// populate map with block or entity instead of just their uuid or position
     for (const tag in map) {
         const elem: Vec3 | string = map[tag];
 
@@ -98,12 +116,14 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<any
         } else {
             map[tag] = bot.nearestEntity((e) => e.uuid === elem);
         }
-    }
+    }*/
 
     bot.chat('/gamemode survival @s');
     bot.chat('/effect give @s minecraft:instant_health 1 200');
     bot.chat('/effect give @s minecraft:saturation 1 200');
+
     await bot.waitForTicks(20);
+    await bot.setQuickBarSlot(0);
     return map;
 }
 
@@ -137,11 +157,11 @@ async function loadCsv(csv_file: string): Promise<[string[][], string[][][]]> {
     return [inventory, structure];
 }
 
-function summonEntity(entity: string, pos: Vec3, bot: Bot, tag: string | null): string | undefined {
+function summonEntity(entity: string, pos: Vec3, bot: Bot, tag: string | null): UUID | undefined {
     let [entity_id, nbt_tags] = getNbt(entity);
-    let uuid: string | undefined;
+    let uuid: UUID | undefined;
     if (tag) {
-        uuid = uuidv4();
+        uuid = crypto.randomUUID();
         (nbt_tags as any).UUID = uuidToArray(uuid);
     }
     // we count the bot position as an entity
@@ -208,7 +228,7 @@ function getNbt(input: string): [string, nbtts.Tag] {
 
 // convert from standard dashed notation: eaec6bda-374c-4cf0-9e5d-e986a33d8a78 
 // to miecraft signed int representation: [I;-353604646,927747312,-1638012538,-1556247944]
-function uuidToArray(uuid: string): Int32Array {
+function uuidToArray(uuid: UUID): Int32Array {
     const hex = uuid.replace(/-/g, '');
     const buffer = Buffer.from(hex, 'hex');
 
