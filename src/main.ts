@@ -47,6 +47,9 @@ bot.once('spawn', async () => {
 
     await bot.waitForTicks(10);
     setMovements(bot);
+
+    console.log(`MineflayerTestbed running on ${bot.version} server`)
+
     const success: boolean = await executeTests(bot, parsed_tests, output_csv_path);
 
     exit(success? 0 : 1); //convert boolean to standard bash 0 for all correct 1 for error

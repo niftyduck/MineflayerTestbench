@@ -16,7 +16,7 @@ export async function executeTests(bot: Bot, parsed_tests: TestCasesSchema, outp
 
     if (output_csv_path) {
         csvStream = csv.format({ headers: true });
-        const file = fs.createWriteStream(output_csv_path);
+        const file = fs.createWriteStream(output_csv_path,  {flags:'a'});
         csvStream.pipe(file);
     }
 
@@ -57,6 +57,8 @@ export async function executeTests(bot: Bot, parsed_tests: TestCasesSchema, outp
 
                 // log everything to a csv
                 csvStream?.write({
+                    "time": Date.now(),
+                    "game_version": bot.version,
                     "test_run": meta.id,
                     "test_case": test_case.id,
                     "action_index": i,

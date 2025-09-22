@@ -123,7 +123,7 @@ For example:
 Note that there is also a specific case for the player `@player` where if instead of a valid entity id we put the 'player', that position will be where the agent spawns in, regardless of the name of the agent. 
 
 #### Tags/IDs
-To simplify dealing with coordinates and entity selectors, a tagging system similar to the one used in [LabRecruits](https://github.com/iv4xr-project/labrecruits/wiki/Defining-a-level) has been implemented. Using the `^` symbol at the end of any block or entityt definition will cause anything following it to become a tag of the preceding block or entity. 
+To simplify dealing with coordinates and entity selectors, a tagging system similar to the one used in [LabRecruits](https://github.com/iv4xr-project/labrecruits/wiki/Defining-a-level) has been implemented. Using the `^` symbol at the end of any block or entity definition will cause anything following it to become a tag of the preceding block or entity. You can also tag an empty air block by omiting anything before the symbol.
 
 Examples:
 
@@ -132,6 +132,8 @@ Examples:
 `chest[facing=south]{Items:[{Slot:0b,id:"minecraft:stone",count:1}]}^chest`
 
 `minecraft:clay^foobar`
+
+`^location_tag`
 
 Note that player entities are excluded `@player^agent` will fail to even place the agent
 
