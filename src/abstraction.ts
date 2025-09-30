@@ -240,7 +240,7 @@ export async function checkEntity(bot: Bot, target: UUID, nbt?: string, health?:
             }
         });
 
-        bot.chat(`/execute as ${target} if entity @s[nbt=${snbt}]`)
+        bot.chat(`/execute if data entity ${target} ${snbt}`)
     })
 }
 
