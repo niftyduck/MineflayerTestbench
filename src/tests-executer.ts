@@ -84,7 +84,6 @@ export async function executeTests(bot: Bot, parsed_tests: TestCasesSchema, outp
     csvStream?.end();
     
     await bot.waitForTicks(20);
-    bot.quit();
     
     return !failed;
 }

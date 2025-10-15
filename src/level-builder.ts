@@ -12,14 +12,24 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<Rec
 
     const [inventory, structure] = await loadCsv(csv_file);
 
-    // dy must be at least 3 block tall for the bot to fit
-    const dy: number = Math.max(structure.length, 3);
+    const playerY = structure.findIndex(layer =>
+        layer.some(row =>
+            row.includes("@player")
+        )
+    );
 
-    // since CSVs fill empty cells with commas, we can just use the first line's length
-    const dx: number = structure?.[0]?.[0]?.length || 3;
+    if ( playerY == -1 ){
+        throw new Error("Invalid level, must specify player position");
+    }
+
+    // dy must be tall enough to fit the player
+    const dy: number = Math.max(playerY + 2, structure.length);
 
     // find longest row for the z dimension
-    const dz: number = Math.max(...structure.map((a: string[][]) => a.length));
+    const dz: number = Math.max(3, ...structure.map((layer: string[][]) => layer.length));
+
+    // find longest row in the x dimension
+    const dx: number = Math.max(3, ...structure.map((layer: string[][]) => Math.max(...layer.map((row: string[]) => row.length))));
 
     await bot.waitForChunksToLoad();
 
@@ -68,8 +78,8 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<Rec
                 }
 
                 //defer block placement
-                if (thing[0] === "!"){
-                    setTimeout(()=>bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${thing.substring(1)}`), 100);
+                if (thing[0] === "!") {
+                    setTimeout(() => bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${thing.substring(1)}`), 100);
                 } else if (thing) {
                     bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${thing}`);
                 }
@@ -94,7 +104,7 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<Rec
         let slot_number = 0;
         for (const [row, items] of inventory.entries()) {
             for (const item of items) {
-                if (item[0] === "/"){
+                if (item[0] === "/") {
                     bot.chat(item);
                     continue;
                 }
@@ -103,20 +113,6 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<Rec
             }
         }
     }
-
-    // delay so entities can spawn and block info is propagated back to the bot
-    // await bot.waitForTicks(10);
-
-    /*// populate map with block or entity instead of just their uuid or position
-    for (const tag in map) {
-        const elem: Vec3 | string = map[tag];
-
-        if (elem instanceof Vec3) {
-            map[tag] = bot.blockAt(elem);
-        } else {
-            map[tag] = bot.nearestEntity((e) => e.uuid === elem);
-        }
-    }*/
 
     bot.chat('/gamemode survival @s');
     bot.chat('/effect give @s minecraft:instant_health 1 200');
