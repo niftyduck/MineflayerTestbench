@@ -16,11 +16,11 @@
     "mineflayer-pathfinder": "^2.4.5",
     "nbt-ts": "^2.0.2",
     "vec3": "^0.1.10",
-    "zod": "4.1.11"
+    "zod": "4.1.12"
   },
   "devDependencies": {
-    "@types/node": "24.5.2",
+    "@types/node": "24.9.1",
     "require-self": "^0.2.3",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.3"
   }
 }
