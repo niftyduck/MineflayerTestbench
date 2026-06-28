@@ -1,0 +1,43 @@
+{
+    "meta": {
+        "id": "hahahdds",
+        "time": "2025-08-01T20:12",
+        "x": 16,
+        "y": 65,
+        "z": 0,
+        "username": "Bot",
+        "address": "localhost", 
+        "level_csv": "./levels/arena.csv",
+        "output_csv": "./debug_log.csv"
+    },
+    "test_cases": [
+        {
+            "id": "122",
+            "actions": [
+                {
+                    "name": "select",
+                    "item": "diamond_sword",
+                    "expect_result": true
+                },
+                {
+                    "name": "wait",
+                    "ticks": 30
+                },
+                {
+                    "name": "move_to",
+                    "target": "z1",
+                    "expect_result": true,
+                    "verbose": true
+                },
+                {
+                    "name": "wait",
+                    "ticks": 30
+                },
+                {
+                    "name": "attack",
+                    "target": "z1"
+                }
+            ]
+        }
+    ]
+}

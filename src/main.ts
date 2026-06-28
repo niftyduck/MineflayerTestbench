@@ -14,13 +14,18 @@ import { exit } from 'process';
 // setup command line args and defaults
 const args: any = getArgs();
 
-const tests_json: string = args?.test || "./test.json";
+const tests_json: string = args?.test || "./arena.json";
 const parsed_tests = TestCasesSchema.parse(JSON.parse(fs.readFileSync(tests_json, 'utf8')));
 const meta = parsed_tests.meta;
 const output_csv_path: string | undefined = args?.output_csv || meta.output_csv
 
+const rawAddress: string = args?.address || meta.address || "127.0.0.1";
+const [host, portStr] = rawAddress.split(":");
+const port = portStr ? parseInt(portStr, 10) : 25565;
+
 const bot = mineflayer.createBot({
-    host: args?.address || meta.address || "127.0.0.1",
+    host,
+    port,
     username: args?.username || meta.username,
     auth: 'offline' // for offline mode servers, no need to buy real accounts for testing
 });
@@ -41,9 +46,6 @@ bot.once('spawn', async () => {
     }
     // this tag will be used later
     bot.chat('/tag @s add bot');
-
-
-
 
     await bot.waitForTicks(10);
     setMovements(bot);
