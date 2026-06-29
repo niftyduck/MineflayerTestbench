@@ -8,6 +8,9 @@ import {executeTests} from './tests-executer.js'
 
 import { setMovements } from './abstraction.js'
 
+import { startApiServer } from './api-server.js';
+
+
 import { TestCasesSchema } from './tests-schema.js';
 import { exit } from 'process';
 
@@ -50,9 +53,17 @@ bot.once('spawn', async () => {
 
     console.log(`MineflayerTestbed running on ${bot.version} server`)
 
-    const success: boolean = await executeTests(bot, parsed_tests, output_csv_path);
+    // if test is provided, run the tests and exit with the appropriate code
+    // else start the API server to allow external control of the bot
+    if (args?.test) {
+        const success: boolean = await executeTests(bot, parsed_tests, output_csv_path);
+        bot.quit();
+        exit(success? 0 : 1); //convert boolean to standard bash 0 for all correct 1 for error
+    }else{
+        startApiServer(bot, 3000);
+        console.log('API server started. Bot will stay connected until terminated.');
+    }
+
     
-    bot.quit();
-    exit(success? 0 : 1); //convert boolean to standard bash 0 for all correct 1 for error
 });
 

@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@fast-csv/parse": "^5.0.5",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "fast-csv": "^5.0.5",
     "mineflayer": "4.33.0",
     "mineflayer-pathfinder": "^2.4.5",
@@ -19,6 +21,8 @@
     "zod": "4.1.12"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/node": "24.9.1",
     "require-self": "^0.2.3",
     "typescript": "^5.9.3"
