@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import type { Bot } from 'mineflayer';
+import { Vec3 } from 'vec3';
 
 import { attack, breakBlock, click, moveTo, selectItem, pickUpLoot, placeBlockOn, useOnEntity, checkBlock, checkEntity, anvil, checkInventory, sneak } from './abstraction.js'
+import { UUID } from 'crypto';
 
 const ActionSchema = z.object({
     name: z.string(),
@@ -9,6 +11,36 @@ const ActionSchema = z.object({
     verbose: z.boolean().optional(),
 })
 
+const TargetSchema = z.object({
+    target: z.string(),
+});
+
+const CoordSchema = z.object({
+    x: z.number(),
+    y: z.number(),
+    z: z.number(),
+});
+
+const CoordOrTarget = z.union([
+    TargetSchema,
+    CoordSchema,
+]);
+
+function getTarget(data: any, map: Record<string, any>) {
+    if (map && data.target) {
+        return map[data.target];
+    }
+
+    return new Vec3(data.x, data.y, data.z);
+}
+
+function getTargetEntity(target: string, map: Record<string, any>) {
+    if (map && target in map) {
+        return map[target];
+    }
+    // Assume a stright UUID
+    return target;
+}
 
 const CheckSchema = ActionSchema.extend({
     expect_result: z.boolean().default(true),
@@ -16,12 +48,11 @@ const CheckSchema = ActionSchema.extend({
 
 const MoveTo = ActionSchema.extend({
     name: z.literal("move_to"),
-    target: z.string(),
     distance: z.number().optional(),
-}).transform((data) => ({
+}).transform((data: any) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await moveTo(bot, map[data.target], data.distance, data.verbose);
+        return await moveTo(bot, getTarget(data, map), data.distance, data.verbose);
     }
 }))
 
@@ -47,49 +78,49 @@ const PickUpLoot = ActionSchema.extend({
 
 const PlaceBlockOn = ActionSchema.extend({
     name: z.literal("place"),
-    target: z.string(),
     face: z.string(),
-}).transform((data) => ({
+}).extend(CoordOrTarget)
+.transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await placeBlockOn(bot, map[data.target], data.face, data.verbose);
+        return await placeBlockOn(bot, getTarget(data, map), data.face, data.verbose);
     }
 }))
 
 const Break = ActionSchema.extend({
     name: z.literal("break"),
-    target: z.string(),
-}).transform((data) => ({
+}).extend(CoordOrTarget)
+.transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await breakBlock(bot, map[data.target], data.verbose);
+        return await breakBlock(bot, getTarget(data, map), data.verbose);
     }
 }))
 
 const AnvilOperation = ActionSchema.extend({
     name: z.literal("anvil"),
-    target: z.string(),
     item_one: z.string().optional(),
     item_two: z.string().optional(),
     custom_name: z.string().optional(),
-}).refine((data) => !(!data.item_two && !data.custom_name),
+}).extend(CoordOrTarget)
+.refine((data) => !(!data.item_two && !data.custom_name),
     {
         message: "custom_name is mandatory when item_two is not provided"
     }
 ).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await anvil(bot, map[data.target], data.item_one, data.item_two, data.custom_name, data.verbose);
+        return await anvil(bot, getTarget(data, map), data.item_one, data.item_two, data.custom_name, data.verbose);
     }
 }))
 
 const Click = ActionSchema.extend({
     name: z.literal("click"),
-    target: z.string(),
-}).transform((data) => ({
+}).extend(CoordOrTarget)
+.transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await click(bot, map[data.target]);
+        return await click(bot, getTarget(data, map));
     }
 }))
 
@@ -119,7 +150,7 @@ const Attack = ActionSchema.extend({
 }).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await attack(bot, map[data.target]);
+        return await attack(bot, getTargetEntity(data.target, map));
     }
 }))
 
@@ -134,19 +165,19 @@ const CheckEntity = CheckSchema.extend({
 }).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await checkEntity(bot, map[data.target], data.nbt, data.health);
+        return await checkEntity(bot, getTargetEntity(data.target, map), data.nbt, data.health);
     }
 }))
 
 const CheckBlock = CheckSchema.extend({
     name: z.literal("check_block"),
-    target: z.string(),
     expected: z.string(),
     nbt: z.string().optional()
-}).transform((data) => ({
+}).extend(CoordOrTarget)
+.transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await checkBlock(bot, map[data.target], data.expected, data.nbt, data.verbose);
+        return await checkBlock(bot, getTarget(data, map), data.expected, data.nbt, data.verbose);
     }
 }))
 
@@ -187,7 +218,7 @@ const Fail = ActionSchema.extend({
 }))
 
 
-const DiscriminizedActions = z.discriminatedUnion("name", [
+export const DiscriminizedAction = z.discriminatedUnion("name", [
     Wait,
     SelectItem,
     MoveTo,
@@ -209,6 +240,8 @@ const DiscriminizedActions = z.discriminatedUnion("name", [
     Fail,
 ])
 
+export type DiscriminizedAction = z.infer<typeof DiscriminizedAction>;
+
 export const TestCasesSchema = z.object({
     meta: z.object({
         id: z.string(),
@@ -224,7 +257,7 @@ export const TestCasesSchema = z.object({
     test_cases: z.array(
         z.object({
             id: z.string(),
-            actions: z.array(DiscriminizedActions),
+            actions: z.array(DiscriminizedAction),
         })
     )
 })
