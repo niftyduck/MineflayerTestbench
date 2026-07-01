@@ -1,42 +1,15 @@
 import { z } from 'zod';
 import type { Bot } from 'mineflayer';
-import { Vec3 } from 'vec3';
 
 import { attack, breakBlock, click, moveTo, selectItem, pickUpLoot, placeBlockOn, useOnEntity, checkBlock, checkEntity, anvil, checkInventory, sneak } from './abstraction.js'
-import { UUID } from 'crypto';
+import { Vec3 } from 'vec3';
 
-const ActionSchema = z.object({
-    name: z.string(),
-    expect_result: z.boolean().optional(),
-    verbose: z.boolean().optional(),
-})
 
-// Location can be supplied either as a named target or as explicit x/y/z
-// coordinates. A union can't be passed to `.extend()`, so instead we merge the
-// fields as optionals and enforce "exactly one form" with a `.refine()`.
-const CoordOrTargetShape = {
-    target: z.string().optional(),
-    x: z.number().optional(),
-    y: z.number().optional(),
-    z: z.number().optional(),
-};
-
-function hasExactlyOneLocationForm(data: any) {
-    const hasTarget = data.target !== undefined;
-    const hasCoord = data.x !== undefined && data.y !== undefined && data.z !== undefined;
-    return hasTarget !== hasCoord; // XOR: exactly one form supplied
-}
-
-const locationRefine = {
-    message: "Provide either 'target' or x/y/z coordinates, not both/neither",
-} as const;
-
-function getTarget(data: any, map: Record<string, any>) {
-    if (map && data.target) {
-        return map[data.target];
+function getTarget(target: z.infer<typeof Target>, map: Record<string, any>) {
+    if (typeof target === "string") {
+        return map ? map[target] : target;
     }
-
-    return new Vec3(data.x, data.y, data.z);
+    return new Vec3(target.x, target.y, target.z);
 }
 
 function getTargetEntity(target: string, map: Record<string, any>) {
@@ -47,17 +20,33 @@ function getTargetEntity(target: string, map: Record<string, any>) {
     return target;
 }
 
+const Target = z.union([
+  z.string(),
+  z.object({
+    x: z.number(),
+    y: z.number(),
+    z: z.number(),
+  }),
+]);
+
+const ActionSchema = z.object({
+    name: z.string(),
+    expect_result: z.boolean().optional(),
+    verbose: z.boolean().optional(),
+})
+
 const CheckSchema = ActionSchema.extend({
     expect_result: z.boolean().default(true),
 })
 
 const MoveTo = ActionSchema.extend({
-    name: z.literal("move_to"),
-    distance: z.number().optional(),
-}).transform((data: any) => ({
+        name: z.literal("move_to"),
+        target: Target,
+        distance: z.number().optional(),
+    }).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await moveTo(bot, getTarget(data, map), data.distance, data.verbose);
+        return await moveTo(bot, getTarget(data.target, map), data.distance, data.verbose);
     }
 }))
 
@@ -71,6 +60,7 @@ const Sneak = ActionSchema.extend({
     }
 }))
 
+
 const PickUpLoot = ActionSchema.extend({
     name: z.literal("pick_up_loot"),
 }).transform((data) => ({
@@ -82,53 +72,49 @@ const PickUpLoot = ActionSchema.extend({
 
 const PlaceBlockOn = ActionSchema.extend({
     name: z.literal("place"),
+    target: Target,
     face: z.string(),
-    ...CoordOrTargetShape,
-}).refine(hasExactlyOneLocationForm, locationRefine)
-.transform((data) => ({
+}).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await placeBlockOn(bot, getTarget(data, map), data.face, data.verbose);
+        return await placeBlockOn(bot, getTarget(data.target, map), data.face, data.verbose);
     }
 }))
 
 const Break = ActionSchema.extend({
     name: z.literal("break"),
-    ...CoordOrTargetShape,
-}).refine(hasExactlyOneLocationForm, locationRefine)
-.transform((data) => ({
+    target: Target,
+}).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await breakBlock(bot, getTarget(data, map), data.verbose);
+        return await breakBlock(bot, getTarget(data.target, map), data.verbose);
     }
 }))
 
 const AnvilOperation = ActionSchema.extend({
     name: z.literal("anvil"),
+    target: Target,
     item_one: z.string().optional(),
     item_two: z.string().optional(),
     custom_name: z.string().optional(),
-    ...CoordOrTargetShape,
 }).refine((data) => !(!data.item_two && !data.custom_name),
     {
         message: "custom_name is mandatory when item_two is not provided"
     }
-).refine(hasExactlyOneLocationForm, locationRefine)
-.transform((data) => ({
+).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await anvil(bot, getTarget(data, map), data.item_one, data.item_two, data.custom_name, data.verbose);
+        return await anvil(bot, getTarget(data.target, map), data.item_one, data.item_two, data.custom_name, data.verbose);
     }
 }))
 
 const Click = ActionSchema.extend({
     name: z.literal("click"),
-    ...CoordOrTargetShape,
-}).refine(hasExactlyOneLocationForm, locationRefine)
-.transform((data) => ({
+    target: Target,
+}).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await click(bot, getTarget(data, map));
+        return await click(bot, getTarget(data.target, map));
     }
 }))
 
@@ -179,14 +165,13 @@ const CheckEntity = CheckSchema.extend({
 
 const CheckBlock = CheckSchema.extend({
     name: z.literal("check_block"),
+    target: Target,
     expected: z.string(),
-    nbt: z.string().optional(),
-    ...CoordOrTargetShape,
-}).refine(hasExactlyOneLocationForm, locationRefine)
-.transform((data) => ({
+    nbt: z.string().optional()
+}).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await checkBlock(bot, getTarget(data, map), data.expected, data.nbt, data.verbose);
+        return await checkBlock(bot, getTarget(data.target, map), data.expected, data.nbt, data.verbose);
     }
 }))
 
