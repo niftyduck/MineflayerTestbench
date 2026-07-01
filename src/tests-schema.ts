@@ -11,20 +11,25 @@ const ActionSchema = z.object({
     verbose: z.boolean().optional(),
 })
 
-const TargetSchema = z.object({
-    target: z.string(),
-});
+// Location can be supplied either as a named target or as explicit x/y/z
+// coordinates. A union can't be passed to `.extend()`, so instead we merge the
+// fields as optionals and enforce "exactly one form" with a `.refine()`.
+const CoordOrTargetShape = {
+    target: z.string().optional(),
+    x: z.number().optional(),
+    y: z.number().optional(),
+    z: z.number().optional(),
+};
 
-const CoordSchema = z.object({
-    x: z.number(),
-    y: z.number(),
-    z: z.number(),
-});
+function hasExactlyOneLocationForm(data: any) {
+    const hasTarget = data.target !== undefined;
+    const hasCoord = data.x !== undefined && data.y !== undefined && data.z !== undefined;
+    return hasTarget !== hasCoord; // XOR: exactly one form supplied
+}
 
-const CoordOrTarget = z.union([
-    TargetSchema,
-    CoordSchema,
-]);
+const locationRefine = {
+    message: "Provide either 'target' or x/y/z coordinates, not both/neither",
+} as const;
 
 function getTarget(data: any, map: Record<string, any>) {
     if (map && data.target) {
@@ -66,7 +71,6 @@ const Sneak = ActionSchema.extend({
     }
 }))
 
-
 const PickUpLoot = ActionSchema.extend({
     name: z.literal("pick_up_loot"),
 }).transform((data) => ({
@@ -79,7 +83,8 @@ const PickUpLoot = ActionSchema.extend({
 const PlaceBlockOn = ActionSchema.extend({
     name: z.literal("place"),
     face: z.string(),
-}).extend(CoordOrTarget)
+    ...CoordOrTargetShape,
+}).refine(hasExactlyOneLocationForm, locationRefine)
 .transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
@@ -89,7 +94,8 @@ const PlaceBlockOn = ActionSchema.extend({
 
 const Break = ActionSchema.extend({
     name: z.literal("break"),
-}).extend(CoordOrTarget)
+    ...CoordOrTargetShape,
+}).refine(hasExactlyOneLocationForm, locationRefine)
 .transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
@@ -102,12 +108,13 @@ const AnvilOperation = ActionSchema.extend({
     item_one: z.string().optional(),
     item_two: z.string().optional(),
     custom_name: z.string().optional(),
-}).extend(CoordOrTarget)
-.refine((data) => !(!data.item_two && !data.custom_name),
+    ...CoordOrTargetShape,
+}).refine((data) => !(!data.item_two && !data.custom_name),
     {
         message: "custom_name is mandatory when item_two is not provided"
     }
-).transform((data) => ({
+).refine(hasExactlyOneLocationForm, locationRefine)
+.transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
         return await anvil(bot, getTarget(data, map), data.item_one, data.item_two, data.custom_name, data.verbose);
@@ -116,7 +123,8 @@ const AnvilOperation = ActionSchema.extend({
 
 const Click = ActionSchema.extend({
     name: z.literal("click"),
-}).extend(CoordOrTarget)
+    ...CoordOrTargetShape,
+}).refine(hasExactlyOneLocationForm, locationRefine)
 .transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
@@ -172,8 +180,9 @@ const CheckEntity = CheckSchema.extend({
 const CheckBlock = CheckSchema.extend({
     name: z.literal("check_block"),
     expected: z.string(),
-    nbt: z.string().optional()
-}).extend(CoordOrTarget)
+    nbt: z.string().optional(),
+    ...CoordOrTargetShape,
+}).refine(hasExactlyOneLocationForm, locationRefine)
 .transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
