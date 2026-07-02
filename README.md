@@ -12,7 +12,7 @@ Then you will need to compile the project with
 
 To actually run the project with default parameters, you can then use
 
-`npm run start`
+`npm start`
 
 ### Two run modes
 
@@ -27,7 +27,7 @@ Supported commmand-line args:
 - ***test***: path to the json file defining the test to be run, as described in [Test file format](#test-file-format). **If omitted, the bot starts in HTTP server mode instead of running a test.**
 - ***address***: the address and port of the Minecraft server (default "*localhost:25565*")
 - ***output_csv***: the file path for the result of the tests (no logging if undefined)
-- ***config***: path to a JSON configuration file with tunable parameters (scan ranges, timeouts, API port, ...). (default "*./config.json*"). Any missing value falls back to default. See [Configuration](#configuration).
+- ***config***: path to a JSON configuration file with custom parameters (scan ranges, timeouts, API port, ...). (default "*./config.json*"). Any missing value falls back to default. See [Configuration](#configuration).
 
 Example (batch test mode):
 
@@ -84,7 +84,7 @@ A `config.json` with all the defaults is included, and partial files are fine (o
 ## Minecraft server setup
 For the project to run you will need to set up a local vanilla Minecraft server for the bot to connect to. 
 
-The latest Minecraft version MineFlayer currently supports is [1.21.5](https://www.minecraft.net/en-us/article/minecraft-java-edition-1-21-5).
+The latest Minecraft version MineFlayer currently supports is [1.21.11](https://www.minecraft.net/en-us/article/minecraft-java-edition-1-21-11).
 
 Since the bot doesn't have a linked Microsoft account, you will need to disable authentication which can be done by setting
 
