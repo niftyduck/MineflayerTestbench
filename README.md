@@ -12,25 +12,27 @@ Then you will need to compile the project with
 
 To actually run the project with default parameters, you can then use
 
-`npm run start`
+`npm start`
 
 Supported commmand-line args:
 
 - ***username***: the username for the bot. Defaults to "*Bot*" if unspecified
 <!-- - ***level***: path to the csv file of the level, as described in [Level Format](#level-format). Defaults to "*./test.csv*" -->
-- ***test***: path to the json file defining the test to be run, as described in [Test file format](#test-file-format). Defaults to "*./test.json*"
+- ***test***: path to the json file defining the test to be run, as described in [Test file format](#test-file-format). If not provided, the api server is started instead.
+- ***api_port***: TCP port to start the API server on. This only has an effect if the test parameter is not provided. Defaults to 3000.
 <!-- - ***coords***: the coordinates where the test will take place. This refers to the bottom most x,y,z corner of the structure boudning box. Defaults to '32,65,0' -->
+- 
 - ***address***: the address and port of the Minecraft server, accepts both IPV4 addresses as well as domains in the standard format address:port. Defaults to "*localhost:25565*"
 - ***output_csv***: the file path for the result of the tests, will be stored as a csv, defaults to not logging anything
 
 Example format:
 
-`npm run start address=tortaccia.duckdns.org:25565 username=itsAlisaa test=./test.json`
+`npm start address=tortaccia.duckdns.org:25565 username=itsAlisaa test=./test.json`
 
 ## Minecraft server setup
 For the project to run you will need to set up a local vanilla Minecraft server for the bot to connect to. 
 
-The latest Minecraft version MineFlayer currently supports is [1.21.5](https://www.minecraft.net/en-us/article/minecraft-java-edition-1-21-5).
+The latest Minecraft version MineFlayer currently supports is [1.21.11](https://www.minecraft.net/en-us/article/minecraft-java-edition-1-21-11).
 
 Since the bot doesn't have a linked Microsoft account, you will need to disable authentication which can be done by setting
 
