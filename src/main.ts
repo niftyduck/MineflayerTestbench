@@ -10,12 +10,18 @@ import { setMovements } from './abstraction.js'
 
 import { startApiServer } from './api-server.js';
 
+import { loadConfig } from './config.js';
 
 import { TestCasesSchema } from './tests-schema.js';
 import { exit } from 'process';
 
 // setup command line args and defaults
 const args: any = getArgs();
+
+// Load tunable parameters (scan radii, timeouts, api port, ...) from a JSON
+// file; missing/partial files fall back to the built-in defaults. Path is
+// overridable with `config=<path>` (defaults to ./config.json).
+const config = loadConfig(args?.config || "./config.json");
 
 const tests_json: string = args?.test || "./test.json";
 const parsed_tests = TestCasesSchema.parse(JSON.parse(fs.readFileSync(tests_json, 'utf8')));
@@ -48,7 +54,7 @@ bot.once('spawn', async () => {
 
 
 
-    await bot.waitForTicks(10);
+    await bot.waitForTicks(config.bot.spawnSettleTicks);
     setMovements(bot);
 
     console.log(`MineflayerTestbed running on ${bot.version} server`)
@@ -60,7 +66,7 @@ bot.once('spawn', async () => {
         bot.quit();
         exit(success? 0 : 1); //convert boolean to standard bash 0 for all correct 1 for error
     }else{
-        startApiServer(bot, 3000);
+        startApiServer(bot, config.server.port);
         console.log('API server started. Bot will stay connected until terminated.');
     }
 

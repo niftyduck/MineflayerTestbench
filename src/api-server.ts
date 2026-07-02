@@ -5,32 +5,38 @@ import { Vec3 } from "vec3";
 import { buildLevel } from "./level-builder.js";
 import { DiscriminizedAction } from "./tests-schema.js";
 import { UUID } from "node:crypto";
-import { boolean } from "zod";
-
-/**
- * Constants used in the API server
- */
-
-/** Horizontal scan radius (blocks) around the bot */
-const SCAN_RADIUS_HORIZONTAL = 3;
-/** Vertical scan height above the bot */
-const SCAN_HEIGHT_ABOVE_BOT = 2;
-/** Vertical scan height below the bot */
-const SCAN_HEIGHT_BELOW_BOT = 1;
-/** Scan radius (blocks) for entities around the bot */
-const SCAN_ENTITY_RADIUS = 10;
+import { getConfig } from "./config.js";
 
 let botStatus: string = 'IDLE';
 let bot: Bot | null = null;
 let map: Record<string, Vec3 | UUID> | null = null;
 let lastActionResult: boolean = true;
+// Remember the last level that was built so /reset can rebuild it.
+// NOTE: this could be replaced by deininf a 'defaualt' level
+let lastLevelCsv: string | null = null;
+let lastLocation: Vec3 | null = null;
+
+/**
+ * Serialize the tag map (tag name -> position or entity UUID) into a plain
+ * object, so it can be returned by /build-level, /reset and /tags.
+ */
+function serializeTags(tagMap: Record<string, Vec3 | UUID> | null): Record<string, any> {
+    const tags: Record<string, any> = {};
+    if (!tagMap) return tags;
+    for (const [key, value] of Object.entries(tagMap)) {
+        tags[key] = value instanceof Vec3
+            ? { x: value.x, y: value.y, z: value.z }
+            : { uuid: value };
+    }
+    return tags;
+}
 
 /**
  * Starts the API server for the Minecraft bot
  * @param minecraftBot The Mineflayer bot instance
  * @param port The port on which to start the server
  */
-export function startApiServer(minecraftBot: Bot, port: number  = 3000): void   {
+export function startApiServer(minecraftBot: Bot, port: number = getConfig().server.port): void   {
     bot = minecraftBot;
 
     const app = express();
@@ -77,18 +83,39 @@ export function startApiServer(minecraftBot: Bot, port: number  = 3000): void   
         try {
             const location = new Vec3(x, y, z);
             map = await buildLevel(bot, level_csv, location);
-            const tags : Record<string, any> = {};
-            for (const [key, value] of Object.entries(map)) {
-                if (value instanceof Vec3) {
-                    tags[key] = { x: value.x, y: value.y, z: value.z };
-                } else {
-                    tags[key] = {uuid: value};
-                }
-            }
-            res.json({success: true, tags});
+            lastLevelCsv = level_csv;
+            lastLocation = location;
+            res.json({ success: true, tags: serializeTags(map) });
         } catch (err : any) {
             botStatus = 'IDLE';
             res.status(500).json({ error: 'Failed to build level' });
+        } finally {
+            botStatus = 'IDLE';
+        }
+    });
+
+    // Return the current tag map (tag name -> position or entity UUID).
+    app.get('/tags', (req, res) => {
+        res.json({ tags: serializeTags(map) });
+    });
+
+    // Reset agent by rebuild the last built level
+    app.post('/reset', async (req, res) => {
+        if (!bot) {
+            return res.status(500).json({ error: 'Bot is not initialized' });
+        }
+        if (!lastLevelCsv || !lastLocation) {
+            return res.status(400).json({ error: 'No level has been built yet' });
+        }
+        if (botStatus !== 'IDLE') {
+            return res.status(409).json({ status: 'busy', note: 'bot already busy' });
+        }
+        botStatus = 'BUSY';
+        try {
+            map = await buildLevel(bot, lastLevelCsv, lastLocation);
+            res.json({ success: true, tags: serializeTags(map) });
+        } catch (err: any) {
+            res.status(500).json({ error: 'Failed to reset level' });
         } finally {
             botStatus = 'IDLE';
         }
@@ -103,13 +130,32 @@ export function startApiServer(minecraftBot: Bot, port: number  = 3000): void   
             return res.status(400).json({ error: 'Missing action json' });
         }
 
-        try {
-            const action = DiscriminizedAction.parse(req.body);
-            startAsyncAction(bot, action, res);
-        } catch (e){
-            return res.status(400).json({ error: e });  
+        if (botStatus !== 'IDLE') {
+            return res.status(409).json({ status: 'busy', note: 'bot already busy' });
         }
-        
+
+        let action: DiscriminizedAction;
+        try {
+            action = DiscriminizedAction.parse(req.body);
+        } catch (e) {
+            return res.status(400).json({ error: String(e) });
+        }
+
+        // Execute synchronously and return the outcome, so an external controller
+        // (e.g. an aplib agent) gets the result in the same request/response.
+        botStatus = action.name;
+        try {
+            const raw = await action.execute(bot, map);
+            // Actions may return a boolean outcome or nothing (void).
+            const result: boolean | null = typeof raw === 'boolean' ? raw : null;
+            lastActionResult = action.expect_result === undefined || action.expect_result === result;
+            botStatus = 'IDLE';
+            return res.status(200).json({ name: action.name, result, passed: lastActionResult });
+        } catch (e) {
+            botStatus = 'IDLE';
+            lastActionResult = false;
+            return res.status(500).json({ name: action.name, error: String(e), result: null, passed: false });
+        }
     });
 
     app.listen(port, () => {
@@ -118,32 +164,6 @@ export function startApiServer(minecraftBot: Bot, port: number  = 3000): void   
 }
 
 
-/**
- * Starts an asynchronous action and manages the bot's status
- * @param botInstance: the Bot instance
- * @param action The Zod action json object
- * @param response The Express response object
- * @returns 
- */
-function startAsyncAction(botInstance: Bot, action: DiscriminizedAction, response: express.Response): void {
-    if (botStatus !== 'IDLE') {
-        response.status(400).json({ status: 'accepted', note: 'bot already busy' });
-        return;
-    }
-
-    botStatus = action.name;
-    action.execute(botInstance, map)
-    .then((res: boolean | void) => { 
-        botStatus = 'IDLE';
-        lastActionResult = action.expect_result === undefined || action.expect_result === res;
-        })
-    .catch(() => { 
-        botStatus = 'IDLE'; 
-        lastActionResult = false;
-    });
-    response.status(200).json({ status: 'accepted', note: 'action started' });
-}
-
 
 /**
  * Scans for blocks near the bot
@@ -151,6 +171,7 @@ function startAsyncAction(botInstance: Bot, action: DiscriminizedAction, respons
  * @returns An array of nearby blocks
  */
 function scanNearbyBlocks(botInstance: Bot): Array<{ id: string; position: { x: number; y: number; z: number } }> {
+    const scan = getConfig().scan;
     const pos = botInstance.entity.position;
     const cx = Math.floor(pos.x);
     const cy = Math.floor(pos.y);
@@ -158,9 +179,9 @@ function scanNearbyBlocks(botInstance: Bot): Array<{ id: string; position: { x: 
 
     const nearbyBlocks: Array<{ id: string; position: { x: number; y: number; z: number } }> = [];
 
-    for (let x = cx - SCAN_RADIUS_HORIZONTAL; x <= cx + SCAN_RADIUS_HORIZONTAL; x++) {
-        for (let y = cy - SCAN_HEIGHT_BELOW_BOT; y <= cy + SCAN_HEIGHT_ABOVE_BOT; y++) {
-            for (let z = cz - SCAN_RADIUS_HORIZONTAL; z <= cz + SCAN_RADIUS_HORIZONTAL; z++) {
+    for (let x = cx - scan.radiusHorizontal; x <= cx + scan.radiusHorizontal; x++) {
+        for (let y = cy - scan.heightBelowBot; y <= cy + scan.heightAboveBot; y++) {
+            for (let z = cz - scan.radiusHorizontal; z <= cz + scan.radiusHorizontal; z++) {
                 const block = botInstance.blockAt(new Vec3(x, y, z));
                 if (block && block.type !== 0) { // Exclude air blocks
                     nearbyBlocks.push({
@@ -181,17 +202,22 @@ function scanNearbyBlocks(botInstance: Bot): Array<{ id: string; position: { x: 
  * @param botInstance The Mineflayer bot instance
  * @returns An array of nearby entities
  */
-function scanNearbyEntities(botInstance: Bot): Array<{ name: string; position: { x: number; y: number; z: number } }> {
+function scanNearbyEntities(botInstance: Bot): Array<{ name: string; uuid?: string; id: number; position: { x: number; y: number; z: number } }> {
+    const entityRadius = getConfig().scan.entityRadius;
     const pos = botInstance.entity.position;
     return Object.values(botInstance.entities)
         .filter(e => {
             const dx = e.position.x - pos.x;
             const dy = e.position.y - pos.y;
             const dz = e.position.z - pos.z;
-            return Math.sqrt(dx * dx + dy * dy + dz * dz) <= SCAN_ENTITY_RADIUS;
+            return Math.sqrt(dx * dx + dy * dy + dz * dz) <= entityRadius;
         })
         .map(e => ({
             name: e.name || e.entityType?.toString() || 'unknown',
+            // uuid lets an external controller address this exact entity (e.g. attack);
+            // available for players and most mobs.
+            uuid: (e as any).uuid,
+            id: e.id,
             position: { x: e.position.x, y: e.position.y, z: e.position.z },
         }));
 }

@@ -1,0 +1,71 @@
+{
+    "meta": {
+        "id": "wood-corners",
+        "time": "2026-07-01T10:00",
+        "x": 0,
+        "y": 65,
+        "z": 0,
+        "username": "Bot",
+        "address": "localhost",
+        "level_csv": "examples/wood-corners.csv"
+    },
+    "test_cases": [
+        {
+            "id": "move_to_each_corner_by_coordinates",
+            "actions": [
+                {
+                    "name": "move_to",
+                    "target": { "x": 0, "y": 66, "z": 0 },
+                    "distance": 2,
+                    "expect_result": true,
+                    "verbose": true
+                },
+                {
+                    "name": "check_block",
+                    "target": { "x": 0, "y": 66, "z": 0 },
+                    "expected": "oak_log",
+                    "expect_result": true
+                },
+                {
+                    "name": "move_to",
+                    "target": { "x": 19, "y": 66, "z": 0 },
+                    "distance": 2,
+                    "expect_result": true,
+                    "verbose": true
+                },
+                {
+                    "name": "check_block",
+                    "target": { "x": 19, "y": 66, "z": 0 },
+                    "expected": "spruce_log",
+                    "expect_result": true
+                },
+                {
+                    "name": "move_to",
+                    "target": { "x": 0, "y": 66, "z": 19 },
+                    "distance": 2,
+                    "expect_result": true,
+                    "verbose": true
+                },
+                {
+                    "name": "check_block",
+                    "target": { "x": 0, "y": 66, "z": 19 },
+                    "expected": "birch_log",
+                    "expect_result": true
+                },
+                {
+                    "name": "move_to",
+                    "target": { "x": 19, "y": 66, "z": 19 },
+                    "distance": 2,
+                    "expect_result": true,
+                    "verbose": true
+                },
+                {
+                    "name": "check_block",
+                    "target": { "x": 19, "y": 66, "z": 19 },
+                    "expected": "jungle_log",
+                    "expect_result": true
+                }
+            ]
+        }
+    ]
+}

@@ -9,12 +9,7 @@ import { Vec3 } from 'vec3';
 
 import { isBlock, isEntity } from './type-check.js';
 import { UUID } from 'crypto';
-
-const TIMEOUT_PATHFIND = 10000;
-const MAX_PICKUP_RANGE = 5;
-const ITEM_PICKUP_RADIUS = .5;
-const ITEM_PICKUP_TIMEOUT = 2000;
-const SHORT_TIMEOUT = 500;
+import { getConfig } from './config.js';
 
 let movement: Movements;
 
@@ -50,7 +45,7 @@ export async function moveTo(bot: Bot, target: UUID | Vec3, distance: number = 1
             cleanup();
             if (verbose) console.log("Pathfinder timed out");
             resolve(false);
-        }, TIMEOUT_PATHFIND);
+        }, getConfig().actions.pathfindTimeoutMs);
 
         bot.once("goal_reached", () => {
             cleanup();
@@ -115,7 +110,7 @@ export async function pickUpLoot(bot: Bot, verbose?: boolean): Promise<boolean> 
     await bot.waitForTicks(1);
     const item_entity = bot.nearestEntity((e) => e.name === "item");
 
-    if (!item_entity || !item_entity.isValid || bot.entity.position.distanceTo(item_entity.position) > MAX_PICKUP_RANGE) {
+    if (!item_entity || !item_entity.isValid || bot.entity.position.distanceTo(item_entity.position) > getConfig().actions.maxPickupRange) {
         if (verbose) console.log("no item entity found in range");
         return false;
     }
@@ -126,7 +121,7 @@ export async function pickUpLoot(bot: Bot, verbose?: boolean): Promise<boolean> 
             bot.pathfinder.stop();
             if (verbose) console.log("pathfinder timed out");
             resolve(false);
-        }, ITEM_PICKUP_TIMEOUT);
+        }, getConfig().actions.itemPickupTimeoutMs);
 
         bot.on('entityGone', async (entity) => {
             if (entity === item_entity) {
@@ -136,7 +131,7 @@ export async function pickUpLoot(bot: Bot, verbose?: boolean): Promise<boolean> 
                 resolve(true);
             }
         });
-        const goal = new pathfinder.goals.GoalFollow(item_entity, ITEM_PICKUP_RADIUS);
+        const goal = new pathfinder.goals.GoalFollow(item_entity, getConfig().actions.itemPickupRadius);
         bot.pathfinder.setMovements(movement);
         bot.pathfinder.setGoal(goal);
     })
@@ -201,7 +196,7 @@ export async function checkBlock(bot: Bot, block: Vec3, expeced_block?: string, 
         const timeout = setTimeout(() => {
             resolve(false);
             bot.removeAllListeners("message");
-        }, SHORT_TIMEOUT);
+        }, getConfig().actions.shortTimeoutMs);
 
         bot.once("message", (msg) => {
             clearTimeout(timeout);
@@ -229,7 +224,7 @@ export async function checkEntity(bot: Bot, target: UUID, nbt?: string, health?:
         const timeout = setTimeout(() => {
             resolve(false);
             bot.removeAllListeners("message");
-        }, SHORT_TIMEOUT);
+        }, getConfig().actions.shortTimeoutMs);
 
         bot.once("message", (msg) => {
             clearTimeout(timeout);
@@ -294,7 +289,7 @@ export async function checkInventory(bot: Bot, item_id: string, count?: number, 
         const timeout = setTimeout(() => {
             resolve(false);
             bot.removeAllListeners("message");
-        }, SHORT_TIMEOUT);
+        }, getConfig().actions.shortTimeoutMs);
 
         bot.once("message", (msg) => {
             clearTimeout(timeout);
