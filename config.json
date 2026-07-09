@@ -1,0 +1,25 @@
+{
+    "server": {
+        "port": 3000
+    },
+    "scan": {
+        "radiusHorizontal": 3,
+        "heightAboveBot": 2,
+        "heightBelowBot": 1,
+        "entityRadius": 10
+    },
+    "actions": {
+        "pathfindTimeoutMs": 10000,
+        "maxPickupRange": 5,
+        "itemPickupRadius": 0.5,
+        "itemPickupTimeoutMs": 2000,
+        "shortTimeoutMs": 500
+    },
+    "levelBuilder": {
+        "deferredPlacementDelayMs": 100,
+        "postBuildWaitTicks": 20
+    },
+    "bot": {
+        "spawnSettleTicks": 10
+    }
+}

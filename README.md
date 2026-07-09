@@ -12,25 +12,79 @@ Then you will need to compile the project with
 
 To actually run the project with default parameters, you can then use
 
-`npm run start`
+`npm start`
+
+### Two run modes
+
+The bot has two modes depending on whether the `test` argument is given:
+
+- **Batch test mode** — when `test=<file.json>` is passed, the bot connects, runs the whole JSON test suite, and then exits with code `0` if every action's outcome matched its `expect_result` (all passed) or `1` otherwise. 
+- **HTTP server mode** — when `test` parameter is omitted, the bot connects and starts an HTTP API on port `3000` (dafault value) and stays connected, so an external controller can build levels and drive the bot step by step over HTTP. See [HTTP API server](#http-api-server).
 
 Supported commmand-line args:
 
-- ***username***: the username for the bot. Defaults to "*Bot*" if unspecified
-<!-- - ***level***: path to the csv file of the level, as described in [Level Format](#level-format). Defaults to "*./test.csv*" -->
-- ***test***: path to the json file defining the test to be run, as described in [Test file format](#test-file-format). Defaults to "*./test.json*"
-<!-- - ***coords***: the coordinates where the test will take place. This refers to the bottom most x,y,z corner of the structure boudning box. Defaults to '32,65,0' -->
-- ***address***: the address and port of the Minecraft server, accepts both IPV4 addresses as well as domains in the standard format address:port. Defaults to "*localhost:25565*"
-- ***output_csv***: the file path for the result of the tests, will be stored as a csv, defaults to not logging anything
+- ***username***: the username for the bot (default "*Bot*") if unspecified
+- ***test***: path to the json file defining the test to be run, as described in [Test file format](#test-file-format). **If omitted, the bot starts in HTTP server mode instead of running a test.**
+- ***address***: the address and port of the Minecraft server (default "*localhost:25565*")
+- ***output_csv***: the file path for the result of the tests (no logging if undefined)
+- ***config***: path to a JSON configuration file with custom parameters (scan ranges, timeouts, API port, ...). (default "*./config.json*"). Any missing value falls back to default. See [Configuration](#configuration).
 
-Example format:
+Example (batch test mode):
 
-`npm run start address=tortaccia.duckdns.org:25565 username=itsAlisaa test=./test.json`
+`npm run start address=localhost:25565 username=botName test=./test.json`
+
+Example (HTTP server mode — note: no `test=` argument):
+
+`npm run start address=localhost:25565 username=aBot`
+
+## Configuration
+
+Tunable parameters (scan ranges, action timeouts, the HTTP API port, etc.) are read from a JSON config file. The file is **optional**. By default the tool reads `./config.json`. User can point to alternative configurations using the `config=<path>` command-line argument:
+
+```bash
+npm run start config=./custom-config.json
+```
+
+A `config.json` with all the defaults is included, and partial files are fine (only defined keys are overridden). The available parameters (with their defaults):
+
+```json
+{
+    "server": {
+        "port": 3000
+    },
+    "scan": {
+        "radiusHorizontal": 3,
+        "heightAboveBot": 2,
+        "heightBelowBot": 1,
+        "entityRadius": 10
+    },
+    "actions": {
+        "pathfindTimeoutMs": 10000,
+        "maxPickupRange": 5,
+        "itemPickupRadius": 0.5,
+        "itemPickupTimeoutMs": 2000,
+        "shortTimeoutMs": 500
+    },
+    "levelBuilder": {
+        "deferredPlacementDelayMs": 100,
+        "postBuildWaitTicks": 20
+    },
+    "bot": {
+        "spawnSettleTicks": 10
+    }
+}
+```
+
+- **server.port** — port the [HTTP API server](#http-api-server) listens on.
+- **scan.\*** — how much of the world `GET /status` reports: the horizontal (x/z) block radius, how many blocks above/below the bot to scan, and the entity report radius.
+- **actions.\*** — timeouts/ranges used while executing actions: pathfinder timeout, max loot pickup range, how close to get to an item, item-pickup timeout, and the generic short timeout used by the `check_*` command-response waits.
+- **levelBuilder.\*** — delay before placing a block, and number of ticks to wait after a level finishes building.
+- **bot.spawnSettleTicks** — ticks to wait after spawning before the bot starts acting.
 
 ## Minecraft server setup
 For the project to run you will need to set up a local vanilla Minecraft server for the bot to connect to. 
 
-The latest Minecraft version MineFlayer currently supports is [1.21.5](https://www.minecraft.net/en-us/article/minecraft-java-edition-1-21-5).
+The latest Minecraft version MineFlayer currently supports is [1.21.11](https://www.minecraft.net/en-us/article/minecraft-java-edition-1-21-11).
 
 Since the bot doesn't have a linked Microsoft account, you will need to disable authentication which can be done by setting
 
@@ -41,6 +95,86 @@ in the *server.properties* file.
 On the first run with a specific username, to enable the bot to do what it has to do, you will need to give OP permission to the bot, if this the case, the bot will simply tell you to run `op <bot_name>` from the console. 
 
 It is reccommended to use a void preset superflat world for the server.
+
+## HTTP API server
+
+When the bot start **without** a `test=` argument it enters *server mode*. After connecting (and getting OP), it starts an HTTP API on **port 3000** and stays connected. This lets an external program build levels, observe the world, and issue actions one at a time.
+
+Start the server with:
+
+```bash
+npm run start            # uses ./test.json only for meta (username/address); starts the API
+```
+
+The console should print `Minecraft API server is running on http://localhost:3000`.
+
+### Endpoints
+
+| Method & path | Body | Returns |
+|---|---|---|
+| `GET /status` | — | bot `status` (`IDLE`/`BUSY`/last action name), `lastActionResult`, `position`, `health`, `food`, `inventory[]`, `nearbyBlocks[]`, `nearbyEntities[]` (each entity includes its `uuid` when available) |
+| `POST /build-level` | `{ "level_csv", "x", "y", "z" }` | `{ "success": true, "tags": { … } }` — builds the level (see [Level format](#level-format)) and returns the tag map (tag → `{x,y,z}` position or `{uuid}`) |
+| `GET /tags` | — | `{ "tags": { … } }` — the tag map of the current level |
+| `POST /reset` | — | rebuilds the **most recently built** level and returns its `tags` |
+| `POST /action` | an action object (see below) | `{ "name", "result", "passed" }` — runs the action **synchronously** and returns its boolean `result` (or `null` for actions with no result) and whether it matched `expect_result` |
+
+Notes:
+
+- `POST /action` is **synchronous**: it waits for the action to finish and returns the outcome in the same response. While an action is in flight the bot is busy and further `POST /action` / `POST /reset` calls get **HTTP 409** `{ "status": "busy" }`. Invalid action JSON returns **HTTP 400**; an action that throws returns **HTTP 500** with `{ "name", "error", "result": null, "passed": false }`.
+- The action object is exactly one of the entries described in [actions](#actions): a `name` plus its parameters. A **location** is given via a `target` field that is *either* a tag string (resolved against the current level's tag map) *or* an explicit `{ "x", "y", "z" }` object. (`attack` and `check_entity` take `target` as a plain string — a tag or a raw entity UUID.)
+- Action names: `move_to`, `break`, `place`, `click`, `select`, `attack`, `sneak`, `pick_up_loot`, `anvil`, `wait`, `check_block`, `check_entity`, `check_inventory`, and the no-ops `pass` / `fail`.
+
+### Testing the server with curl
+
+Start the server (server mode) first, then from another terminal:
+
+```bash
+# 1. Observe the world (position, health, inventory, nearby blocks/entities)
+curl -s http://localhost:3000/status | jq
+
+# 2. Build a level; the response contains the tag map for the placed blocks/entities
+curl -s -X POST http://localhost:3000/build-level \
+  -H 'Content-Type: application/json' \
+  -d '{"level_csv":"examples/wood-corners.csv","x":0,"y":65,"z":0}' | jq
+
+# 3. List the current tags
+curl -s http://localhost:3000/tags | jq
+
+# 4. Move to a block by explicit coordinates (target is an {x,y,z} object)
+curl -s -X POST http://localhost:3000/action \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"move_to","target":{"x":0,"y":66,"z":0},"distance":2}'
+# -> {"name":"move_to","result":true,"passed":true}
+
+# 5. Check the block at those coordinates is the expected one
+curl -s -X POST http://localhost:3000/action \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"check_block","target":{"x":0,"y":66,"z":0},"expected":"oak_log"}'
+# -> {"name":"check_block","result":true,"passed":true}
+
+# 6. Build a level with a target with a tag
+curl -s -X POST http://localhost:3000/build-level \
+  -H 'Content-Type: application/json' \
+  -d '{"level_csv":"examples/anvil-test.csv","x":0,"y":65,"z":0}' | jq
+
+# 7. Move to a target addressed by its tag instead of coordinates
+curl -s -X POST http://localhost:3000/action \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"move_to","target":"anvil"}'
+
+# 8. Select an item into the main hand
+curl -s -X POST http://localhost:3000/action \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"select","item":"iron_helmet"}'
+
+# 9. Check the inventory holds a given item (optionally an exact count)
+curl -s -X POST http://localhost:3000/action \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"check_inventory","item":" iron_ingot","count":1}'
+
+# 10. Rebuild the current level from scratch
+curl -s -X POST http://localhost:3000/reset | jq
+```
 
 ## Level format
 The levels are defined in a `.csv` file format, every cell can be an item, entity or block. 
@@ -159,4 +293,14 @@ The following are the supported tags in the meta sextion. Note that some are opt
 Test cases is an array of test cases where each of them is comprised of an **id**, and an array of **actions** that compose the test case.
 
 ### actions
-actions are used inside test cases to tell the bot what to do. They all start with a **name** paarameter, and can have a variety of parameters depending on the name
+actions are used inside test cases to tell the bot what to do. They all start with a **name** parameter, and can have a variety of parameters depending on the name. The same action objects are accepted by the `POST /action` endpoint of the [HTTP API server](#http-api-server).
+
+Common parameters:
+
+- **name**: the action to perform (required). One of: `move_to`, `break`, `place`, `click`, `select`, `attack`, `sneak`, `pick_up_loot`, `anvil`, `wait`, `check_block`, `check_entity`, `check_inventory`, `pass`, `fail`.
+- **expect_result**: the boolean outcome you expect from the action. In batch test mode a test case fails if the actual result differs; for `check_*` actions it defaults to `true`.
+- **verbose**: if `true`, logs extra diagnostic info while the action runs.
+
+**Specifying a location** (for `move_to`, `break`, `place`, `click`, `check_block`, `anvil`): use a single **`target`** field that is *either* a tag string (defined in the level with `^`, resolved against the current tag map) *or* an explicit coordinate object `{ "x": …, "y": …, "z": … }`. For example `"target": "chest"` or `"target": {"x": 0, "y": 66, "z": 0}`. (`attack` and `check_entity` take `target` as a plain string — a tag or a raw entity UUID.)
+
+Some action-specific parameters: `move_to` accepts an optional `distance` (how close to get); `select` takes `item`; `wait` takes `ticks`; `place` takes `face`; `anvil` takes `item_one`/`item_two`/`custom_name`; `check_block` takes `expected` (and optional `nbt`); `check_inventory` takes `item` (and optional `count`/`damage`/`custom_name`); `check_entity` takes optional `nbt`/`health`.

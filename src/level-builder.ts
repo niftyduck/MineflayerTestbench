@@ -4,6 +4,7 @@ import nbtts from "nbt-ts";
 import { Vec3 } from 'vec3';
 import type { Bot } from 'mineflayer';
 import { UUID } from 'crypto';
+import { getConfig } from './config.js';
 
 // Coords should be a vec3 of the bottom xyz corner of the level
 async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<Record<string, Vec3 | UUID>> {
@@ -79,7 +80,7 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<Rec
 
                 //defer block placement
                 if (thing[0] === "!") {
-                    setTimeout(() => bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${thing.substring(1)}`), 100);
+                    setTimeout(() => bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${thing.substring(1)}`), getConfig().levelBuilder.deferredPlacementDelayMs);
                 } else if (thing) {
                     bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${thing}`);
                 }
@@ -118,7 +119,7 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<Rec
     bot.chat('/effect give @s minecraft:instant_health 1 200');
     bot.chat('/effect give @s minecraft:saturation 1 200');
 
-    await bot.waitForTicks(20);
+    await bot.waitForTicks(getConfig().levelBuilder.postBuildWaitTicks);
     await bot.setQuickBarSlot(0);
     return map;
 }
