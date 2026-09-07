@@ -18,6 +18,17 @@ let lastLevelCsv: string | null = null;
 let lastLocation: Vec3 | null = null;
 
 /**
+ * How many times the bot has died since the server started.
+ *
+ * Reported by /status so that a client can tell a death happened. Health alone
+ * cannot: mineflayer respawns the bot automatically and the server heals it, so
+ * anyone polling health sees 20 before the death and 20 after it, and the death
+ * leaves no trace. A monotonic counter is edge-triggered -- a client comparing
+ * it against the value it saw last cannot miss a death, however slowly it polls.
+ */
+let deaths: number = 0;
+
+/**
  * Serialize the tag map (tag name -> position or entity UUID) into a plain
  * object, so it can be returned by /build-level, /reset and /tags.
  */
@@ -39,6 +50,10 @@ function serializeTags(tagMap: Record<string, Vec3 | UUID> | null): Record<strin
  */
 export function startApiServer(minecraftBot: Bot, port: number = getConfig().server.port): void   {
     bot = minecraftBot;
+
+    // mineflayer emits 'death' on the death packet, before autoRespawn puts the
+    // bot back on its feet: this is the only moment the death is observable.
+    bot.on('death', () => { deaths++; });
 
     const app = express();
     app.use(cors());
@@ -65,6 +80,7 @@ export function startApiServer(minecraftBot: Bot, port: number = getConfig().ser
             position: { x: pos.x, y: pos.y, z: pos.z },
             health: bot.health,
             food: bot.food,
+            deaths,
             inventory,
             nearbyBlocks,
             nearbyEntities,

@@ -239,7 +239,7 @@ export async function checkEntity(bot: Bot, target: UUID, nbt?: string, health?:
     })
 }
 
-export async function getMobHealth(bot: Bot, target: UUID): Promise<number | null> {
+export async function getMobHealth(bot: Bot, target: UUID, verbose?: boolean): Promise<number | null> {
 
     return new Promise((resolve) => {
         const timeout = setTimeout(() => {
@@ -249,8 +249,13 @@ export async function getMobHealth(bot: Bot, target: UUID): Promise<number | nul
 
         bot.once("message", (msg) => {
             clearTimeout(timeout);
-            console.log(msg);
-            console.log(JSON.stringify(msg));
+            // Behind verbose like every other trace in this file: this handler
+            // runs on every health query, so an RL run calling it twice per
+            // action buries the rest of the output under ChatMessage dumps.
+            if (verbose) {
+                console.log(msg);
+                console.log(JSON.stringify(msg));
+            }
             if (msg?.translate === "commands.data.entity.query") {
                 resolve( + msg.json.with[1].extra[0].text);
             } else {

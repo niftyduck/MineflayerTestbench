@@ -162,7 +162,9 @@ function summonEntity(entity: string, pos: Vec3, bot: Bot, tag: string | null): 
         (nbt_tags as any).UUID = uuidToArray(uuid);
     }
     // we count the bot position as an entity
-    bot.chat(`/summon ${entity_id} ${pos.x} ${pos.y} ${pos.z} ${nbtts.stringify(nbt_tags)}`);
+    // breakLength: Infinity keeps the SNBT on one line — nbt-ts otherwise wraps long
+    // lists, and newlines in a chat message get the bot kicked (illegal_characters)
+    bot.chat(`/summon ${entity_id} ${pos.x} ${pos.y} ${pos.z} ${nbtts.stringify(nbt_tags, { breakLength: Infinity })}`);
 
     return uuid;
 }
