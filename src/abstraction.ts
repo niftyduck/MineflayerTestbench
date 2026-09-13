@@ -8,7 +8,7 @@ import nbtts from "nbt-ts";
 import { Vec3 } from 'vec3';
 
 import { isBlock, isEntity } from './type-check.js';
-import { UUID } from 'crypto';
+import { UUID } from 'node:crypto';
 import { getConfig } from './config.js';
 
 let movement: Movements;
@@ -57,7 +57,6 @@ export async function moveTo(bot: Bot, target: UUID | Vec3, distance: number = 1
             if (status.status === "noPath" || status.status === "timeout") {
                 cleanup();
                 resolve(false);
-                return;
             }
         })
 
@@ -82,8 +81,8 @@ export async function breakBlock(bot: Bot, block: Block | Vec3, verbose?: boolea
     let result = bot.blockAt(to_dig.position)
 
     if (verbose) {
-        console.log(`Block to dig is ${to_dig}`);
-        console.log(`After digging block is ${result}`);
+        console.log(`Block to dig is ${to_dig.type}`);
+        console.log(`After digging block is ${result?.type}`);
     }
     return to_dig.type != result?.type;
 }
@@ -143,7 +142,7 @@ export async function attack(bot: Bot, target: UUID) {
         return false;
     }
     await bot.lookAt(entity.position);
-    await bot.attack(entity);
+    bot.attack(entity);
     return true;
 }
 
@@ -153,7 +152,7 @@ export async function useOnEntity(bot: Bot, target: UUID) {
         return false;
     }
     await bot.lookAt(entity.position)
-    await bot.useOn(entity);
+    bot.useOn(entity);
     return true;
 }
 
@@ -198,7 +197,7 @@ export async function jump(bot: Bot) {
 
 export function sneak(bot: Bot, sneak?: boolean) {
     // if not provided just toggle
-    sneak = sneak === undefined ? !bot.getControlState("sneak") : sneak;
+    sneak = sneak ?? !bot.getControlState("sneak");
     bot.setControlState("sneak", sneak);
 }
 
@@ -342,6 +341,82 @@ export async function anvil(bot: Bot, anvil_block: Vec3, item_one?: string, item
 }
 
 
+export async function assertChatResponse(bot: Bot, command: string | null, expected: string ): Promise<boolean> {
+    await bot.waitForTicks(1);
+
+    return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+            resolve(false);
+            bot.removeAllListeners("message");
+        }, getConfig().actions.shortTimeoutMs);
+
+        bot.once("message", (msg) => {
+            clearTimeout(timeout);
+
+            console.log(JSON.stringify(msg))
+
+            const text = msg.toString();
+
+            console.log(text)
+            resolve(text == expected)
+        });
+
+        if (command != null){   
+            bot.chat(command)
+        }
+    })
+}
+
+export async function assertCoreProtect(bot: Bot, expected_count: number, radius: number, user?: string, time?: string, action?: string, include?: string, exclude?: string): Promise<boolean> {
+    await bot.waitForTicks(1);
+
+    let command = `/co lookup r:${radius}`
+
+    if (user) {
+        if (user == "@s") {
+            user = bot.username
+        }
+        command += ` user:${user}`
+    }
+    if (time) {
+        command += ` time:${time}`
+    }
+    if (action) {
+        command += ` action:${action}`
+    }
+    if (include) {
+        command += ` include:${include}`
+    }
+    if (exclude) {
+        command += ` exclude:${exclude}`
+    }
+    command += " #count"
+
+    return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+            resolve(false);
+            bot.removeAllListeners("message");
+        }, getConfig().actions.shortTimeoutMs);
+
+        bot.on("message", (msg) => {
+            const text = msg.toString();
+            if (new RegExp(/please wait/).exec(text)){
+                return;
+            }
+            clearTimeout(timeout);
+            bot.removeAllListeners("message");
+
+            console.log(JSON.stringify(msg))
+            
+            console.log(text)
+            resolve(text == "")
+        });
+
+        bot.chat(command)
+    })
+}
+
+
 export async function checkInventory(bot: Bot, item_id: string, count?: number, rawcomponents?: any, verbose?: boolean): Promise<boolean> {
 
     const components: string[] = [];
@@ -402,7 +477,7 @@ export async function craft(bot: Bot, item_name: string, crafting_table?: Vec3, 
     if (crafting_table) {
         crafting_table_block = bot.blockAt(crafting_table);
         if (verbose) {
-            console.log(`Block at ${crafting_table_block?.position} is ${crafting_table_block}`);
+            console.log(`Block at ${crafting_table_block?.position} is ${crafting_table_block?.type}`);
         }
         if (!crafting_table_block) {
             return false;
@@ -418,7 +493,7 @@ export async function craft(bot: Bot, item_name: string, crafting_table?: Vec3, 
 
     if (!recipe.requiresTable) {
         crafting_table_block = null;
-    } else if (crafting_table_block === null || crafting_table_block.type !== bot.registry.blocksByName.crafting_table.id){
+    } else if (crafting_table_block?.type !== bot.registry.blocksByName.crafting_table.id){
         return false;
     }
 
@@ -483,11 +558,11 @@ function uuidToEntity(bot: Bot, uuid: UUID): Entity | null {
 
 
 function findItem(bot: Bot, name: string): Item | null {
-    const item_by_id = bot.inventory.items().filter(item => item.name === name)[0];
+    const item_by_id = bot.inventory.items().find(item => item.name === name);
     if (item_by_id) {
         return item_by_id;
     }
-    const item_by_name = bot.inventory.items().filter(item => item.customName === name)[0];
+    const item_by_name = bot.inventory.items().find(item => item.customName === name);
     if (item_by_name) {
         return item_by_name;
     }

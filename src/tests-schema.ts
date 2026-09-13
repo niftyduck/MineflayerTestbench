@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Bot } from 'mineflayer';
 
-import { attack, breakBlock, click, moveTo, selectItem, craft, pickUpLoot, placeBlockOn, useOnEntity, checkBlock, checkEntity, anvil, checkInventory, sneak, checkAdvancement, jump, rawBlockPlace } from './abstraction.js'
+import { attack, breakBlock, click, moveTo, selectItem, craft, pickUpLoot, placeBlockOn, useOnEntity, checkBlock, checkEntity, anvil, checkInventory, sneak, checkAdvancement, jump, rawBlockPlace, assertChatResponse, assertCoreProtect } from './abstraction.js'
 import { Vec3 } from 'vec3';
 
 
@@ -56,7 +56,7 @@ const Sneak = ActionSchema.extend({
 }).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await sneak(bot, data.state)
+        return sneak(bot, data.state)
     }
 }))
 
@@ -217,6 +217,30 @@ const CheckAdvancement = CheckSchema.extend({
     }
 }))
 
+const AssertChatResponse = CheckSchema.extend({
+    name: z.literal("assert_chat"),
+    command: z.string().optional(),
+    expected: z.string()
+}).transform((data) => ({
+    ...data,
+    execute: async (bot: Bot, map: any) => {
+        return await assertChatResponse(bot, data.command ?? null, data.expected);
+    }
+}))
+
+const AssertCoreProtect = CheckSchema.extend({
+    name: z.literal("assert_coreprotect"),
+    command: z.string().optional(),
+    expected_count: z.int(),
+    radius: z.int(),
+    user: z.string().optional(),
+}).transform((data) => ({
+    ...data,
+    execute: async (bot: Bot, map: any) => {
+        return await assertCoreProtect(bot, data.expected_count, data.radius, data.user);
+    }
+}))
+
 const CheckBlock = CheckSchema.extend({
     name: z.literal("check_block"),
     target: Target,
@@ -287,6 +311,8 @@ export const DiscriminizedAction = z.discriminatedUnion("name", [
     CheckEntity,
     CheckInventory,
     CheckAdvancement,
+    AssertChatResponse,
+    AssertCoreProtect,
 
     // NO-OPS
     Pass,
