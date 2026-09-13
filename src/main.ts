@@ -1,4 +1,4 @@
-import fs from 'fs'
+import fs from 'node:fs'
 
 import { getArgs } from './args-parse.js';
 import { executeTests } from './tests-executer.js'
@@ -8,7 +8,7 @@ import { startApiServer } from './api-server.js';
 import { loadConfig } from './config.js';
 
 import { TestCasesSchema } from './tests-schema.js';
-import { exit } from 'process';
+import { exit } from 'node:process';
 import { initBot } from './init-bot.js';
 
 // setup command line args and defaults

@@ -2,7 +2,7 @@ import type { Bot } from 'mineflayer';
 import type { TestCasesSchema } from './tests-schema.js'
 
 import csv from '@fast-csv/format'
-import fs from 'fs'
+import fs from 'node:fs'
 
 import { Vec3 } from 'vec3';
 import { buildLevel } from './level-builder.js';
