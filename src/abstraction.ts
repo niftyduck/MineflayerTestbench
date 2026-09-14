@@ -380,15 +380,12 @@ async function waitForCoQueue(bot: Bot): Promise<boolean> {
 
         const finish = (result: boolean) => {
             if (finished) return;
-
             cleanup();
             resolve(result);
         };
 
         const onMessage = (msg: any) => {
             const text = msg.toString();
-            console.log(text)
-
             if (/Consumer: 0 items in queue/i.test(text)) {
                 finish(true);
             }
