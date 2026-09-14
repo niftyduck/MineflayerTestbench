@@ -233,11 +233,15 @@ const AssertCoreProtect = CheckSchema.extend({
     command: z.string().optional(),
     expected_count: z.int(),
     radius: z.int(),
+    time: z.string(),
     user: z.string().optional(),
+    action: z.string().optional(),
+    exclude: z.string().optional(),
+    include: z.string().optional()
 }).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await assertCoreProtect(bot, data.expected_count, data.radius, data.user);
+        return await assertCoreProtect(bot, data.expected_count, data.radius, data.user, data.time, data.action, data.include, data.exclude);
     }
 }))
 

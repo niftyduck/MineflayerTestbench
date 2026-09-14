@@ -367,8 +367,55 @@ export async function assertChatResponse(bot: Bot, command: string | null, expec
     })
 }
 
+
+async function waitForCoQueue(bot: Bot): Promise<boolean> {
+    return new Promise((resolve) => {
+        let finished = false;
+
+        const cleanup = () => {
+            finished = true;
+            clearTimeout(timeout);
+            bot.removeListener("message", onMessage);
+        };
+
+        const finish = (result: boolean) => {
+            if (finished) return;
+
+            cleanup();
+            resolve(result);
+        };
+
+        const onMessage = (msg: any) => {
+            const text = msg.toString();
+            console.log(text)
+
+            if (/Consumer: 0 items in queue/i.test(text)) {
+                finish(true);
+            }
+        };
+
+        const timeout = setTimeout(() => {
+            finish(false);
+        }, getConfig().actions.pathfindTimeoutMs);
+
+        bot.on("message", onMessage);
+
+        const poll = async () => {
+            while (!finished) {
+                bot.chat("/co status");
+                await bot.waitForTicks(10);
+            }
+        };
+
+        poll();
+    });
+}
+
 export async function assertCoreProtect(bot: Bot, expected_count: number, radius: number, user?: string, time?: string, action?: string, include?: string, exclude?: string): Promise<boolean> {
-    await bot.waitForTicks(1);
+    const queue_clear = await waitForCoQueue(bot);
+    if (!queue_clear) {
+        return false;
+    }
 
     let command = `/co lookup r:${radius}`
 
@@ -392,6 +439,8 @@ export async function assertCoreProtect(bot: Bot, expected_count: number, radius
     }
     command += " #count"
 
+    console.log(command)
+
     return new Promise((resolve) => {
         const timeout = setTimeout(() => {
             resolve(false);
@@ -400,16 +449,15 @@ export async function assertCoreProtect(bot: Bot, expected_count: number, radius
 
         bot.on("message", (msg) => {
             const text = msg.toString();
-            if (new RegExp(/please wait/).exec(text)){
+            const match = new RegExp(/- (\d+) rows? found/, "i").exec(text)
+            if (!match){
                 return;
             }
+
             clearTimeout(timeout);
             bot.removeAllListeners("message");
-
-            console.log(JSON.stringify(msg))
-            
-            console.log(text)
-            resolve(text == "")
+            const number = parseInt(match[1]);
+            resolve(number === expected_count)
         });
 
         bot.chat(command)
