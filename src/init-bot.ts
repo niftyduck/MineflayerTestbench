@@ -30,16 +30,11 @@ export async function initBot(name: string, address: string | null): Promise<Bot
             await bot.waitForTicks(getConfig().bot.spawnSettleTicks);
 
             if (!await isOp(bot)) {
-                if (bot._client.isServer){
-                    bot.chat('bot is not OP on the server please run the following command:');
-                    bot.chat(`op ${bot.username}`);
-                    await waitForOp(bot);
-                    bot.chat('Bot is successfully op:');
-                } else {
-                    bot.chat("LAN world detected, please restart with commands enabled.");
-                    await bot.quit();
-                    reject(new Error("Commands not enabled in LAN world"));
-                }
+                bot.chat('bot is not OP on the server please run the following command:');
+                bot.chat(`op ${bot.username}`);
+                await waitForOp(bot);
+                await bot.waitForTicks(getConfig().bot.spawnSettleTicks);
+                bot.chat('Bot is successfully op:');
             }
             // this tag will be used later
             bot.chat('/tag @s add bot');
