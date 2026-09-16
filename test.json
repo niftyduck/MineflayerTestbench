@@ -21,6 +21,10 @@
                     "verbose": true
                 },
                 {
+                    "name": "assert_xp",
+                    "level": 0
+                },
+                {
                     "name": "select",
                     "item": "iron_axe",
                     "expect_result": true
