@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Bot } from 'mineflayer';
 
-import { attack, breakBlock, click, moveTo, selectItem, craft, pickUpLoot, placeBlockOn, useOnEntity, checkBlock, checkEntity, anvil, checkInventory, sneak, checkAdvancement, jump, rawBlockPlace, assertChatResponse, assertCoreProtect } from './abstraction.js'
+import { attack, breakBlock, click, moveTo, selectItem, craft, pickUpLoot, placeBlockOn, useOnEntity, checkBlock, checkEntity, anvil, checkInventory, sneak, checkAdvancement, jump, rawBlockPlace, assertChatResponse, assertCoreProtect, assertExperience } from './abstraction.js'
 import { Vec3 } from 'vec3';
 
 
@@ -35,7 +35,7 @@ const ActionSchema = z.object({
     verbose: z.boolean().optional(),
 })
 
-const CheckSchema = ActionSchema.extend({
+const AssertionSchema = ActionSchema.extend({
     expect_result: z.boolean().default(true),
 })
 
@@ -195,7 +195,7 @@ const Attack = ActionSchema.extend({
 
 // checks
 
-const CheckEntity = CheckSchema.extend({
+const CheckEntity = AssertionSchema.extend({
     name: z.literal("check_entity"),
     target: z.string(),
     nbt: z.string().optional(),
@@ -207,7 +207,7 @@ const CheckEntity = CheckSchema.extend({
     }
 }))
 
-const CheckAdvancement = CheckSchema.extend({
+const CheckAdvancement = AssertionSchema.extend({
     name: z.literal("check_advancement"),
     advancement: z.string(),
 }).transform((data) => ({
@@ -217,7 +217,17 @@ const CheckAdvancement = CheckSchema.extend({
     }
 }))
 
-const AssertChatResponse = CheckSchema.extend({
+const AssertExperience = AssertionSchema.extend({
+    name: z.literal("assert_xp"),
+    level: z.int(),
+}).transform((data) => ({
+    ...data,
+    execute: async (bot: Bot, map: any) => {
+        return await assertExperience(bot, data.level);
+    }
+}))
+
+const AssertChatResponse = AssertionSchema.extend({
     name: z.literal("assert_chat"),
     command: z.string().optional(),
     expected: z.string()
@@ -228,7 +238,7 @@ const AssertChatResponse = CheckSchema.extend({
     }
 }))
 
-const AssertCoreProtect = CheckSchema.extend({
+const AssertCoreProtect = AssertionSchema.extend({
     name: z.literal("assert_coreprotect"),
     command: z.string().optional(),
     expected_count: z.int(),
@@ -245,7 +255,7 @@ const AssertCoreProtect = CheckSchema.extend({
     }
 }))
 
-const CheckBlock = CheckSchema.extend({
+const CheckBlock = AssertionSchema.extend({
     name: z.literal("check_block"),
     target: Target,
     expected: z.string(),
@@ -257,7 +267,7 @@ const CheckBlock = CheckSchema.extend({
     }
 }))
 
-const CheckInventory = CheckSchema.extend({
+const CheckInventory = AssertionSchema.extend({
     name: z.literal("check_inventory"),
     count: z.number().int().optional(),
     item: z.string(),
@@ -310,13 +320,14 @@ export const DiscriminizedAction = z.discriminatedUnion("name", [
     Jump,
     AnvilOperation,
     
-    // check
+    // Assertions
     CheckBlock,
     CheckEntity,
     CheckInventory,
     CheckAdvancement,
     AssertChatResponse,
     AssertCoreProtect,
+    AssertExperience,
 
     // NO-OPS
     Pass,

@@ -185,7 +185,7 @@ export async function rawBlockPlace(bot: Bot, pos: Vec3) {
         return false;
     }
 
-    await (bot as ExtendedBot)._genericPlace(old_block, pos, { delta: new Vec3(0, 0, 0)});
+    await (bot as ExtendedBot)._genericPlace(old_block, pos, { delta: new Vec3(0, 0, 0) });
     return true;
 }
 
@@ -318,13 +318,13 @@ export async function anvil(bot: Bot, anvil_block: Vec3, item_one?: string, item
     const anvil = await bot.openAnvil(block);
 
     let item_1 = item_one ? findItem(bot, item_one) : bot.heldItem;
-    let item_2 = item_two ? findItem(bot, item_two) : null;
 
     if (!item_1) {
         if (verbose) console.log("item1 not found");
         return false;
     }
 
+    let item_2 = item_two ? findItem(bot, item_two, [item_1]) : null;
     if (!item_2 && !name) {
         if (verbose) console.log("invalid operation, item 2 not found and custom name not provided");
         return false;
@@ -341,7 +341,7 @@ export async function anvil(bot: Bot, anvil_block: Vec3, item_one?: string, item
 }
 
 
-export async function assertChatResponse(bot: Bot, command: string | null, expected: string ): Promise<boolean> {
+export async function assertChatResponse(bot: Bot, command: string | null, expected: string): Promise<boolean> {
     await bot.waitForTicks(1);
 
     return new Promise((resolve) => {
@@ -361,7 +361,7 @@ export async function assertChatResponse(bot: Bot, command: string | null, expec
             resolve(text == expected)
         });
 
-        if (command != null){   
+        if (command != null) {
             bot.chat(command)
         }
     })
@@ -447,7 +447,7 @@ export async function assertCoreProtect(bot: Bot, expected_count: number, radius
         bot.on("message", (msg) => {
             const text = msg.toString();
             const match = new RegExp(/- (\d+) rows? found/, "i").exec(text)
-            if (!match){
+            if (!match) {
                 return;
             }
 
@@ -461,6 +461,25 @@ export async function assertCoreProtect(bot: Bot, expected_count: number, radius
     })
 }
 
+export async function assertExperience(bot: Bot, level: number): Promise<boolean>  {
+    return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+            resolve(false);
+            bot.removeAllListeners("message");
+        }, getConfig().actions.shortTimeoutMs);
+
+        bot.once("message", (msg) => {
+            clearTimeout(timeout);
+            if (msg?.translate === "commands.experience.query.levels") {
+                const xp_levels = msg.json?.with?.[1]?.text ?? 0;
+                resolve(level === xp_levels)
+            }
+        });
+
+        bot.chat("/xp query @s levels")
+    })
+}
+
 
 export async function checkInventory(bot: Bot, item_id: string, count?: number, rawcomponents?: any, verbose?: boolean): Promise<boolean> {
 
@@ -469,6 +488,8 @@ export async function checkInventory(bot: Bot, item_id: string, count?: number, 
     for (const [key, value] of Object.entries(rawcomponents)) {
         if (value !== undefined && value !== null) {
             components.push(`${key}=${value}`);
+        } else {
+            components.push(key);
         }
     }
 
@@ -538,7 +559,7 @@ export async function craft(bot: Bot, item_name: string, crafting_table?: Vec3, 
 
     if (!recipe.requiresTable) {
         crafting_table_block = null;
-    } else if (crafting_table_block?.type !== bot.registry.blocksByName.crafting_table.id){
+    } else if (crafting_table_block?.type !== bot.registry.blocksByName.crafting_table.id) {
         return false;
     }
 
@@ -602,14 +623,15 @@ function uuidToEntity(bot: Bot, uuid: UUID): Entity | null {
 }
 
 
-function findItem(bot: Bot, name: string): Item | null {
-    const item_by_id = bot.inventory.items().find(item => item.name === name);
-    if (item_by_id) {
-        return item_by_id;
-    }
+function findItem(bot: Bot, name: string, exclude?: [Item]): Item | null {
     const item_by_name = bot.inventory.items().find(item => item.customName === name);
     if (item_by_name) {
         return item_by_name;
+    }
+
+    const item_by_id = bot.inventory.items().find(item => item.name === name && !exclude?.find(excluded => excluded === item));
+    if (item_by_id) {
+        return item_by_id;
     }
     return null;
 }
