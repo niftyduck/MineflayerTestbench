@@ -117,7 +117,7 @@ const AnvilOperation = ActionSchema.extend({
     item_one: z.string().optional(),
     item_two: z.string().optional(),
     custom_name: z.string().optional(),
-}).refine((data) => !(!data.item_two && !data.custom_name),
+}).refine((data) => !(!data.item_two && data.custom_name == null),
     {
         message: "custom_name is mandatory when item_two is not provided"
     }
