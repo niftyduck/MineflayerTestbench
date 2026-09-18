@@ -136,6 +136,15 @@ export async function pickUpLoot(bot: Bot, verbose?: boolean): Promise<boolean> 
     })
 }
 
+export async function lookAt(bot: Bot, target: UUID|Vec3) {
+    let coords = target instanceof Vec3 ? target : uuidToEntity(bot, target)?.position;
+    if (coords == null){
+        return false;
+    }
+    await bot.lookAt(coords);
+    return true;
+}
+
 export async function attack(bot: Bot, target: UUID) {
     const entity = uuidToEntity(bot, target);
     if (!entity) {
@@ -165,7 +174,6 @@ export async function placeBlockOn(bot: Bot, pos: Vec3, side: string = "top", ve
     }
 
     await bot.placeBlock(old_block, face);
-
     return true;
 }
 
@@ -319,24 +327,28 @@ export async function anvil(bot: Bot, anvil_block: Vec3, item_one?: string, item
 
     let item_1 = item_one ? findItem(bot, item_one) : bot.heldItem;
 
+
+    console.log(item_1)
     if (!item_1) {
-        if (verbose) console.log("item1 not found");
+        console.log("item1 not found");
         return false;
     }
 
     let item_2 = item_two ? findItem(bot, item_two, [item_1]) : null;
-    if (!item_2 && !name) {
-        if (verbose) console.log("invalid operation, item 2 not found and custom name not provided");
+
+    console.log(item_2)
+
+    try {
+        if (!item_2) {
+            await anvil.rename(item_1, name);
+        } else {
+            await anvil.combine(item_1, item_2, name);
+        }
+    } catch (_) {
         return false;
+    } finally {
+        (anvil as any as Window).close();
     }
-
-    if (!item_2) {
-        await anvil.rename(item_1, name);
-    } else {
-        await anvil.combine(item_1, item_2, name);
-    }
-
-    (anvil as any).close();
     return true;
 }
 
@@ -461,7 +473,7 @@ export async function assertCoreProtect(bot: Bot, expected_count: number, radius
     })
 }
 
-export async function assertExperience(bot: Bot, level: number): Promise<boolean>  {
+export async function assertExperience(bot: Bot, level: number): Promise<boolean> {
     return new Promise((resolve) => {
         const timeout = setTimeout(() => {
             resolve(false);
@@ -472,7 +484,7 @@ export async function assertExperience(bot: Bot, level: number): Promise<boolean
             clearTimeout(timeout);
             if (msg?.translate === "commands.experience.query.levels") {
                 const xp_levels = msg.json?.with?.[1]?.text ?? 0;
-                resolve(level === xp_levels)
+                resolve(level == xp_levels)
             }
         });
 
@@ -575,14 +587,19 @@ export async function craft(bot: Bot, item_name: string, crafting_table?: Vec3, 
 }
 
 
-export async function selectItem(bot: Bot, element: number | string, verbose?: boolean): Promise<boolean> {
+export async function selectItem(bot: Bot, element: number | string | null, verbose?: boolean): Promise<boolean> {
     if (typeof element === "number") {
         bot.setQuickBarSlot(element - 1);
         return true;
     }
 
-    if (verbose) {
-        console.log(bot.inventory.items());
+    if (element == null) {
+        if (bot.heldItem == null || bot.heldItem.name == "air"){
+            return true;
+        }
+
+        bot.unequip("hand");
+        return bot.heldItem == null || bot.heldItem.name == "air";
     }
 
     const item = findItem(bot, element);
@@ -624,14 +641,15 @@ function uuidToEntity(bot: Bot, uuid: UUID): Entity | null {
 
 
 function findItem(bot: Bot, name: string, exclude?: [Item]): Item | null {
-    const item_by_name = bot.inventory.items().find(item => item.customName === name);
+    const item_by_name = bot.inventory.items().find(item => {
+        const custom_name: string | undefined = (item as any)?.components.find((component: any) => component.type == "custom_name")?.data?.value;
+        return custom_name === name && !exclude?.includes(item)
+    });
+
     if (item_by_name) {
         return item_by_name;
     }
 
-    const item_by_id = bot.inventory.items().find(item => item.name === name && !exclude?.find(excluded => excluded === item));
-    if (item_by_id) {
-        return item_by_id;
-    }
-    return null;
+    const item_by_id = bot.inventory.items().find(item => item.name === name && !exclude?.includes(item));
+    return item_by_id ?? null;
 }

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Bot } from 'mineflayer';
 
-import { attack, breakBlock, click, moveTo, selectItem, craft, pickUpLoot, placeBlockOn, useOnEntity, checkBlock, checkEntity, anvil, checkInventory, sneak, checkAdvancement, jump, rawBlockPlace, assertChatResponse, assertCoreProtect, assertExperience } from './abstraction.js'
+import { attack, breakBlock, click, moveTo, selectItem, craft, pickUpLoot, placeBlockOn, useOnEntity, checkBlock, checkEntity, anvil, checkInventory, sneak, checkAdvancement, jump, rawBlockPlace, assertChatResponse, assertCoreProtect, assertExperience, lookAt } from './abstraction.js'
 import { Vec3 } from 'vec3';
 
 
@@ -70,6 +70,35 @@ const Jump = ActionSchema.extend({
     }
 }))
 
+const ActivateItem = ActionSchema.extend({
+    name: z.literal("activate_item"),
+}).transform((data) => ({
+    ...data,
+    execute: async (bot: Bot, map: any) => {
+        bot.activateItem();
+        return;
+    }
+}))
+
+const ConsumeItem = ActionSchema.extend({
+    name: z.literal("consume_item"),
+}).transform((data) => ({
+    ...data,
+    execute: async (bot: Bot, map: any) => {
+        await bot.consume();
+        return;
+    }
+}))
+
+const LookAt = ActionSchema.extend({
+    name: z.literal("look_at"),
+    target: Target
+}).transform((data) => ({
+    ...data,
+    execute: async (bot: Bot, map: any) => {
+        await lookAt(bot, getTarget(data.target, map))
+    }
+}))
 
 const PickUpLoot = ActionSchema.extend({
     name: z.literal("pick_up_loot"),
@@ -144,10 +173,11 @@ const Craft = ActionSchema.extend({
 const Click = ActionSchema.extend({
     name: z.literal("click"),
     target: Target,
+    face: z.string().optional()
 }).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await click(bot, getTarget(data.target, map));
+        return await click(bot, getTarget(data.target, map), data.face);
     }
 }))
 
@@ -164,11 +194,11 @@ const UseOnEntity = ActionSchema.extend({
 
 const SelectItem = ActionSchema.extend({
     name: z.literal("select"),
-    item: z.string(),
+    item: z.string().nullable().optional(),
 }).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await selectItem(bot, data.item, data.verbose);
+        return await selectItem(bot, data.item ?? null, data.verbose);
     }
 }))
 
@@ -319,6 +349,9 @@ export const DiscriminizedAction = z.discriminatedUnion("name", [
     UseOnEntity,
     Jump,
     AnvilOperation,
+    ActivateItem,
+    LookAt,
+    ConsumeItem,
     
     // Assertions
     CheckBlock,
