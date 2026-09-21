@@ -96,6 +96,10 @@ async function buildLevel(bot: Bot, csv_content: string, coords: Vec3): Promise<
         }
     }
 
+    bot.chat('/gamemode survival @s');
+    bot.chat('/effect give @s minecraft:instant_health 1 200');
+    bot.chat('/effect give @s minecraft:saturation 1 200');
+
     // load invetory of bot
     if (inventory[0]) {
         // hotbar
@@ -117,10 +121,6 @@ async function buildLevel(bot: Bot, csv_content: string, coords: Vec3): Promise<
             }
         }
     }
-
-    bot.chat('/gamemode survival @s');
-    bot.chat('/effect give @s minecraft:instant_health 1 200');
-    bot.chat('/effect give @s minecraft:saturation 1 200');
 
     await bot.waitForTicks(getConfig().levelBuilder.postBuildWaitTicks);
     bot.setQuickBarSlot(0);
