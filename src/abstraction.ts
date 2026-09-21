@@ -136,9 +136,9 @@ export async function pickUpLoot(bot: Bot, verbose?: boolean): Promise<boolean> 
     })
 }
 
-export async function lookAt(bot: Bot, target: UUID|Vec3) {
+export async function lookAt(bot: Bot, target: UUID | Vec3) {
     let coords = target instanceof Vec3 ? target : uuidToEntity(bot, target)?.position;
-    if (coords == null){
+    if (coords == null) {
         return false;
     }
     await bot.lookAt(coords);
@@ -382,20 +382,6 @@ export async function assertChatResponse(bot: Bot, command: string | null, expec
 
 async function waitForCoQueue(bot: Bot): Promise<boolean> {
     return new Promise((resolve) => {
-        let finished = false;
-
-        const cleanup = () => {
-            finished = true;
-            clearTimeout(timeout);
-            bot.removeListener("message", onMessage);
-        };
-
-        const finish = (result: boolean) => {
-            if (finished) return;
-            cleanup();
-            resolve(result);
-        };
-
         const onMessage = (msg: any) => {
             const text = msg.toString();
             if (/Consumer: 0 items in queue/i.test(text)) {
@@ -405,18 +391,21 @@ async function waitForCoQueue(bot: Bot): Promise<boolean> {
 
         const timeout = setTimeout(() => {
             finish(false);
-        }, getConfig().actions.pathfindTimeoutMs);
+        }, 5000);
 
         bot.on("message", onMessage);
 
-        const poll = async () => {
-            while (!finished) {
-                bot.chat("/co status");
-                await bot.waitForTicks(10);
-            }
+        const timer = setInterval(() =>
+            bot.chat("/co status")
+            , 1000);
+
+        const finish = (result: boolean) => {
+            clearTimeout(timeout);
+            clearInterval(timer);
+            bot.removeListener("message", onMessage);
+            resolve(result);
         };
 
-        poll();
     });
 }
 
@@ -594,7 +583,7 @@ export async function selectItem(bot: Bot, element: number | string | null, verb
     }
 
     if (element == null) {
-        if (bot.heldItem == null || bot.heldItem.name == "air"){
+        if (bot.heldItem == null || bot.heldItem.name == "air") {
             return true;
         }
 

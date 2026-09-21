@@ -271,7 +271,7 @@ const AssertChatResponse = AssertionSchema.extend({
 const AssertCoreProtect = AssertionSchema.extend({
     name: z.literal("assert_coreprotect"),
     command: z.string().optional(),
-    expected_count: z.int(),
+    count: z.int(),
     radius: z.int(),
     time: z.string(),
     user: z.string().optional(),
@@ -281,7 +281,7 @@ const AssertCoreProtect = AssertionSchema.extend({
 }).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await assertCoreProtect(bot, data.expected_count, data.radius, data.user, data.time, data.action, data.include, data.exclude);
+        return await assertCoreProtect(bot, data.count, data.radius, data.user, data.time, data.action, data.include, data.exclude);
     }
 }))
 
