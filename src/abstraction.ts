@@ -5,11 +5,10 @@ import { Item } from 'prismarine-item';
 import pathfinder, { Movements } from 'mineflayer-pathfinder';
 import nbtts from "nbt-ts";
 
-import { Vec3 } from 'vec3';
-
 import { isBlock, isEntity } from './type-check.js';
 import { UUID } from 'node:crypto';
 import { getConfig } from './config.js';
+import { Vec3 } from 'vec3';
 
 let movement: Movements;
 
@@ -99,8 +98,42 @@ export async function click(bot: Bot, target: Block | UUID | Vec3, face?: string
 
     let block: Block | null = isBlock(target) ? target : bot.blockAt(target);
     if (block) {
-        await bot.activateBlock(block, nameToFace(face));
-        return true;
+        let directionVector: Vec3 | undefined;
+        let cursorPosition: Vec3;
+
+        if (face) {
+            directionVector = nameToFace(face);
+            // Default cursor position to the center of the specified face (range 0.0 to 1.0)
+            cursorPosition = new Vec3(0.5, 0.5, 0.5);
+        } else {
+            // 1. Get bot's eye position
+            const eyePosition = bot.entity.position.offset(0, bot.entity.height, 0);
+
+            // 2. Get vector pointing from eye to the center of the target block
+            const blockCenter = block.position.offset(0.5, 0.5, 0.5);
+            const rayDir = blockCenter.minus(eyePosition as Vec3).normalize();
+
+            // 3. Perform raycast to find the exact hit face and intersection point
+            const raycastResult = bot.world.raycast(eyePosition, rayDir, 6);
+
+            if (raycastResult && raycastResult.intersect) {
+                // Converts internal face ID (0-5) to a direction Vec3
+                directionVector = nameToFace(raycastResult.face.toString());
+                
+                // Convert absolute world intersection point to relative cursor position inside the block [0.0, 1.0]
+                cursorPosition = raycastResult.intersect.minus(block.position) as Vec3;
+            } else {
+                // Fallback: If raycast fails (e.g., out of reach), target the top face from above
+                directionVector = new Vec3(0, 1, 0);
+                cursorPosition = new Vec3(0.5, 1.0, 0.5);
+            }
+        }
+
+        await bot.activateBlock(block, directionVector, cursorPosition);
+
+        // Short check: confirm block was successfully targeted
+        const isSuccess = block !== null;
+        return isSuccess;
     }
     return false;
 }
@@ -601,22 +634,37 @@ export async function selectItem(bot: Bot, element: number | string | null, verb
     return bot.entity.heldItem.name === element;
 }
 
+const BlockFace = {
+  UNKNOWN: -999,
+  BOTTOM: 0,
+  TOP: 1,
+  NORTH: 2,
+  SOUTH: 3,
+  WEST: 4,
+  EAST: 5
+}
 
 function nameToFace(face: string | undefined): Vec3 | undefined {
     if (!face) {
         return undefined;
     }
     const faceVectors: Record<string, Vec3> = {
+        '1': new Vec3(0, 1, 0),
         'top': new Vec3(0, 1, 0),
         '+y': new Vec3(0, 1, 0),
+        '0': new Vec3(0, -1, 0),
         'bottom': new Vec3(0, -1, 0),
         '-y': new Vec3(0, -1, 0),
+        '2': new Vec3(0, 0, -1),
         'north': new Vec3(0, 0, -1),
         '-z': new Vec3(0, 0, -1),
+        '3': new Vec3(0, 0, 1),
         'south': new Vec3(0, 0, 1),
         '+z': new Vec3(0, 0, 1),
+        '5': new Vec3(1, 0, 0),
         'east': new Vec3(1, 0, 0),
         '+x': new Vec3(1, 0, 0),
+        '4': new Vec3(-1, 0, 0),
         'west': new Vec3(-1, 0, 0),
         '-x': new Vec3(-1, 0, 0),
     };
