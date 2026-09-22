@@ -5,11 +5,10 @@ import { Item } from 'prismarine-item';
 import pathfinder, { Movements } from 'mineflayer-pathfinder';
 import nbtts from "nbt-ts";
 
-import { Vec3 } from 'vec3';
-
 import { isBlock, isEntity } from './type-check.js';
-import { UUID } from 'crypto';
+import { UUID } from 'node:crypto';
 import { getConfig } from './config.js';
+import { Vec3 } from 'vec3';
 
 let movement: Movements;
 
@@ -57,7 +56,6 @@ export async function moveTo(bot: Bot, target: UUID | Vec3, distance: number = 1
             if (status.status === "noPath" || status.status === "timeout") {
                 cleanup();
                 resolve(false);
-                return;
             }
         })
 
@@ -82,8 +80,8 @@ export async function breakBlock(bot: Bot, block: Block | Vec3, verbose?: boolea
     let result = bot.blockAt(to_dig.position)
 
     if (verbose) {
-        console.log(`Block to dig is ${to_dig}`);
-        console.log(`After digging block is ${result}`);
+        console.log(`Block to dig is ${to_dig.type}`);
+        console.log(`After digging block is ${result?.type}`);
     }
     return to_dig.type != result?.type;
 }
@@ -100,8 +98,42 @@ export async function click(bot: Bot, target: Block | UUID | Vec3, face?: string
 
     let block: Block | null = isBlock(target) ? target : bot.blockAt(target);
     if (block) {
-        await bot.activateBlock(block, nameToFace(face));
-        return true;
+        let directionVector: Vec3 | undefined;
+        let cursorPosition: Vec3;
+
+        if (face) {
+            directionVector = nameToFace(face);
+            // Default cursor position to the center of the specified face (range 0.0 to 1.0)
+            cursorPosition = new Vec3(0.5, 0.5, 0.5);
+        } else {
+            // 1. Get bot's eye position
+            const eyePosition = bot.entity.position.offset(0, bot.entity.height, 0);
+
+            // 2. Get vector pointing from eye to the center of the target block
+            const blockCenter = block.position.offset(0.5, 0.5, 0.5);
+            const rayDir = blockCenter.minus(eyePosition as Vec3).normalize();
+
+            // 3. Perform raycast to find the exact hit face and intersection point
+            const raycastResult = bot.world.raycast(eyePosition, rayDir, 6);
+
+            if (raycastResult && raycastResult.intersect) {
+                // Converts internal face ID (0-5) to a direction Vec3
+                directionVector = nameToFace(raycastResult.face.toString());
+                
+                // Convert absolute world intersection point to relative cursor position inside the block [0.0, 1.0]
+                cursorPosition = raycastResult.intersect.minus(block.position) as Vec3;
+            } else {
+                // Fallback: If raycast fails (e.g., out of reach), target the top face from above
+                directionVector = new Vec3(0, 1, 0);
+                cursorPosition = new Vec3(0.5, 1.0, 0.5);
+            }
+        }
+
+        await bot.activateBlock(block, directionVector, cursorPosition);
+
+        // Short check: confirm block was successfully targeted
+        const isSuccess = block !== null;
+        return isSuccess;
     }
     return false;
 }
@@ -137,13 +169,22 @@ export async function pickUpLoot(bot: Bot, verbose?: boolean): Promise<boolean> 
     })
 }
 
+export async function lookAt(bot: Bot, target: UUID | Vec3) {
+    let coords = target instanceof Vec3 ? target : uuidToEntity(bot, target)?.position;
+    if (coords == null) {
+        return false;
+    }
+    await bot.lookAt(coords);
+    return true;
+}
+
 export async function attack(bot: Bot, target: UUID) {
     const entity = uuidToEntity(bot, target);
     if (!entity) {
         return false;
     }
     await bot.lookAt(entity.position);
-    await bot.attack(entity);
+    bot.attack(entity);
     return true;
 }
 
@@ -153,7 +194,7 @@ export async function useOnEntity(bot: Bot, target: UUID) {
         return false;
     }
     await bot.lookAt(entity.position)
-    await bot.useOn(entity);
+    bot.useOn(entity);
     return true;
 }
 
@@ -166,7 +207,6 @@ export async function placeBlockOn(bot: Bot, pos: Vec3, side: string = "top", ve
     }
 
     await bot.placeBlock(old_block, face);
-
     return true;
 }
 
@@ -186,7 +226,7 @@ export async function rawBlockPlace(bot: Bot, pos: Vec3) {
         return false;
     }
 
-    await (bot as ExtendedBot)._genericPlace(old_block, pos, { delta: new Vec3(0, 0, 0)});
+    await (bot as ExtendedBot)._genericPlace(old_block, pos, { delta: new Vec3(0, 0, 0) });
     return true;
 }
 
@@ -198,7 +238,7 @@ export async function jump(bot: Bot) {
 
 export function sneak(bot: Bot, sneak?: boolean) {
     // if not provided just toggle
-    sneak = sneak === undefined ? !bot.getControlState("sneak") : sneak;
+    sneak = sneak ?? !bot.getControlState("sneak");
     bot.setControlState("sneak", sneak);
 }
 
@@ -319,26 +359,159 @@ export async function anvil(bot: Bot, anvil_block: Vec3, item_one?: string, item
     const anvil = await bot.openAnvil(block);
 
     let item_1 = item_one ? findItem(bot, item_one) : bot.heldItem;
-    let item_2 = item_two ? findItem(bot, item_two) : null;
 
+
+    console.log(item_1)
     if (!item_1) {
-        if (verbose) console.log("item1 not found");
+        console.log("item1 not found");
         return false;
     }
 
-    if (!item_2 && !name) {
-        if (verbose) console.log("invalid operation, item 2 not found and custom name not provided");
+    let item_2 = item_two ? findItem(bot, item_two, [item_1]) : null;
+
+    console.log(item_2)
+
+    try {
+        if (!item_2) {
+            await anvil.rename(item_1, name);
+        } else {
+            await anvil.combine(item_1, item_2, name);
+        }
+    } catch (_) {
         return false;
+    } finally {
+        (anvil as any as Window).close();
     }
-
-    if (!item_2) {
-        await anvil.rename(item_1, name);
-    } else {
-        await anvil.combine(item_1, item_2, name);
-    }
-
-    (anvil as any).close();
     return true;
+}
+
+
+export async function assertChatResponse(bot: Bot, command: string | null, expected: string): Promise<boolean> {
+    await bot.waitForTicks(1);
+
+    return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+            resolve(false);
+            bot.removeAllListeners("message");
+        }, getConfig().actions.shortTimeoutMs);
+
+        bot.once("message", (msg) => {
+            clearTimeout(timeout);
+
+            console.log(JSON.stringify(msg))
+
+            const text = msg.toString();
+
+            console.log(text)
+            resolve(text == expected)
+        });
+
+        if (command != null) {
+            bot.chat(command)
+        }
+    })
+}
+
+
+async function waitForCoQueue(bot: Bot): Promise<boolean> {
+    return new Promise((resolve) => {
+        const onMessage = (msg: any) => {
+            const text = msg.toString();
+            if (/Consumer: 0 items in queue/i.test(text)) {
+                finish(true);
+            }
+        };
+
+        const timeout = setTimeout(() => {
+            finish(false);
+        }, 5000);
+
+        bot.on("message", onMessage);
+
+        const timer = setInterval(() =>
+            bot.chat("/co status")
+            , 1000);
+
+        const finish = (result: boolean) => {
+            clearTimeout(timeout);
+            clearInterval(timer);
+            bot.removeListener("message", onMessage);
+            resolve(result);
+        };
+
+    });
+}
+
+export async function assertCoreProtect(bot: Bot, expected_count: number, radius: number, user?: string, time?: string, action?: string, include?: string, exclude?: string): Promise<boolean> {
+    const queue_clear = await waitForCoQueue(bot);
+    if (!queue_clear) {
+        return false;
+    }
+
+    let command = `/co lookup r:${radius}`
+
+    if (user) {
+        if (user == "@s") {
+            user = bot.username
+        }
+        command += ` user:${user}`
+    }
+    if (time) {
+        command += ` time:${time}`
+    }
+    if (action) {
+        command += ` action:${action}`
+    }
+    if (include) {
+        command += ` include:${include}`
+    }
+    if (exclude) {
+        command += ` exclude:${exclude}`
+    }
+    command += " #count"
+
+    console.log(command)
+
+    return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+            resolve(false);
+            bot.removeAllListeners("message");
+        }, getConfig().actions.shortTimeoutMs);
+
+        bot.on("message", (msg) => {
+            const text = msg.toString();
+            const match = new RegExp(/- (\d+) rows? found/, "i").exec(text)
+            if (!match) {
+                return;
+            }
+
+            clearTimeout(timeout);
+            bot.removeAllListeners("message");
+            const number = parseInt(match[1]);
+            resolve(number === expected_count)
+        });
+
+        bot.chat(command)
+    })
+}
+
+export async function assertExperience(bot: Bot, level: number): Promise<boolean> {
+    return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+            resolve(false);
+            bot.removeAllListeners("message");
+        }, getConfig().actions.shortTimeoutMs);
+
+        bot.once("message", (msg) => {
+            clearTimeout(timeout);
+            if (msg?.translate === "commands.experience.query.levels") {
+                const xp_levels = msg.json?.with?.[1]?.text ?? 0;
+                resolve(level == xp_levels)
+            }
+        });
+
+        bot.chat("/xp query @s levels")
+    })
 }
 
 
@@ -349,6 +522,8 @@ export async function checkInventory(bot: Bot, item_id: string, count?: number, 
     for (const [key, value] of Object.entries(rawcomponents)) {
         if (value !== undefined && value !== null) {
             components.push(`${key}=${value}`);
+        } else {
+            components.push(key);
         }
     }
 
@@ -402,7 +577,7 @@ export async function craft(bot: Bot, item_name: string, crafting_table?: Vec3, 
     if (crafting_table) {
         crafting_table_block = bot.blockAt(crafting_table);
         if (verbose) {
-            console.log(`Block at ${crafting_table_block?.position} is ${crafting_table_block}`);
+            console.log(`Block at ${crafting_table_block?.position} is ${crafting_table_block?.type}`);
         }
         if (!crafting_table_block) {
             return false;
@@ -418,7 +593,7 @@ export async function craft(bot: Bot, item_name: string, crafting_table?: Vec3, 
 
     if (!recipe.requiresTable) {
         crafting_table_block = null;
-    } else if (crafting_table_block === null || crafting_table_block.type !== bot.registry.blocksByName.crafting_table.id){
+    } else if (crafting_table_block?.type !== bot.registry.blocksByName.crafting_table.id) {
         return false;
     }
 
@@ -434,14 +609,19 @@ export async function craft(bot: Bot, item_name: string, crafting_table?: Vec3, 
 }
 
 
-export async function selectItem(bot: Bot, element: number | string, verbose?: boolean): Promise<boolean> {
+export async function selectItem(bot: Bot, element: number | string | null, verbose?: boolean): Promise<boolean> {
     if (typeof element === "number") {
         bot.setQuickBarSlot(element - 1);
         return true;
     }
 
-    if (verbose) {
-        console.log(bot.inventory.items());
+    if (element == null) {
+        if (bot.heldItem == null || bot.heldItem.name == "air") {
+            return true;
+        }
+
+        bot.unequip("hand");
+        return bot.heldItem == null || bot.heldItem.name == "air";
     }
 
     const item = findItem(bot, element);
@@ -454,22 +634,37 @@ export async function selectItem(bot: Bot, element: number | string, verbose?: b
     return bot.entity.heldItem.name === element;
 }
 
+const BlockFace = {
+  UNKNOWN: -999,
+  BOTTOM: 0,
+  TOP: 1,
+  NORTH: 2,
+  SOUTH: 3,
+  WEST: 4,
+  EAST: 5
+}
 
 function nameToFace(face: string | undefined): Vec3 | undefined {
     if (!face) {
         return undefined;
     }
     const faceVectors: Record<string, Vec3> = {
+        '1': new Vec3(0, 1, 0),
         'top': new Vec3(0, 1, 0),
         '+y': new Vec3(0, 1, 0),
+        '0': new Vec3(0, -1, 0),
         'bottom': new Vec3(0, -1, 0),
         '-y': new Vec3(0, -1, 0),
+        '2': new Vec3(0, 0, -1),
         'north': new Vec3(0, 0, -1),
         '-z': new Vec3(0, 0, -1),
+        '3': new Vec3(0, 0, 1),
         'south': new Vec3(0, 0, 1),
         '+z': new Vec3(0, 0, 1),
+        '5': new Vec3(1, 0, 0),
         'east': new Vec3(1, 0, 0),
         '+x': new Vec3(1, 0, 0),
+        '4': new Vec3(-1, 0, 0),
         'west': new Vec3(-1, 0, 0),
         '-x': new Vec3(-1, 0, 0),
     };
@@ -482,14 +677,16 @@ function uuidToEntity(bot: Bot, uuid: UUID): Entity | null {
 }
 
 
-function findItem(bot: Bot, name: string): Item | null {
-    const item_by_id = bot.inventory.items().filter(item => item.name === name)[0];
-    if (item_by_id) {
-        return item_by_id;
-    }
-    const item_by_name = bot.inventory.items().filter(item => item.customName === name)[0];
+function findItem(bot: Bot, name: string, exclude?: [Item]): Item | null {
+    const item_by_name = bot.inventory.items().find(item => {
+        const custom_name: string | undefined = (item as any)?.components.find((component: any) => component.type == "custom_name")?.data?.value;
+        return custom_name === name && !exclude?.includes(item)
+    });
+
     if (item_by_name) {
         return item_by_name;
     }
-    return null;
+
+    const item_by_id = bot.inventory.items().find(item => item.name === name && !exclude?.includes(item));
+    return item_by_id ?? null;
 }

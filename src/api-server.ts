@@ -127,9 +127,7 @@ export function startApiServer(port: number): void {
             bot.bot.quit();
         }
 
-        if (!bot){
-            bot = {} as BotEntry;
-        }
+        bot ??= {} as BotEntry;
 
         try {
             bot.bot = await initBot(req.params.bot, req.params.address);
@@ -149,7 +147,7 @@ export function startApiServer(port: number): void {
         }
 
         if (bot?.bot) {
-            await bot.bot.quit();
+            bot.bot.quit();
         }
 
         bots.delete(req.params.bot);
@@ -174,7 +172,7 @@ export function startApiServer(port: number): void {
             bot.map = await buildLevel(bot.bot, bot.lastLevelCsv, bot.lastLocation);
             res.json({ success: true, tags: serializeTags(bot.map) });
         } catch (err: any) {
-            res.status(500).json({ error: 'Failed to reset level' });
+            res.status(500).json({ message: 'Failed to reset level', error: err });
         } finally {
             bot.status = 'IDLE';
         }
@@ -272,7 +270,7 @@ function scanNearbyEntities(botInstance: Bot): Array<{ name: string; uuid?: stri
             const dx = e.position.x - pos.x;
             const dy = e.position.y - pos.y;
             const dz = e.position.z - pos.z;
-            return Math.sqrt(dx * dx + dy * dy + dz * dz) <= entityRadius;
+            return Math.hypot(dx, dy, dz) <= entityRadius;
         })
         .map(e => ({
             name: e.name || e.entityType?.toString() || 'unknown',

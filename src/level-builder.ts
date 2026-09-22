@@ -2,7 +2,7 @@ import { parseString } from '@fast-csv/parse';
 import nbtts from "nbt-ts";
 import { Vec3 } from 'vec3';
 import type { Bot } from 'mineflayer';
-import { UUID } from 'crypto';
+import { UUID } from 'node:crypto';
 import { getConfig } from './config.js';
 
 // Coords should be a vec3 of the bottom xyz corner of the level
@@ -14,7 +14,7 @@ async function buildLevel(bot: Bot, csv_content: string, coords: Vec3): Promise<
 
     const playerY = structure.findIndex(layer =>
         layer.some(row =>
-            row.some( cell => cell.match(/@player(\^.+)?/))
+            row.some( cell => new RegExp(/@player(\^.+)?/).exec(cell))
         )
     );
 
@@ -72,7 +72,7 @@ async function buildLevel(bot: Bot, csv_content: string, coords: Vec3): Promise<
                 }
 
                 // if it starts with @ it's an entity
-                if (thing[0] === "@") {
+                if (thing.startsWith("@")) {
                     let entity_id: string = thing.substring(1);
                     let uuid = summonEntity(entity_id, pos, bot, tag);
                     if (tag && uuid) {
@@ -82,7 +82,7 @@ async function buildLevel(bot: Bot, csv_content: string, coords: Vec3): Promise<
                 }
 
                 //defer block placement
-                if (thing[0] === "!") {
+                if (thing.startsWith("!")) {
                     setTimeout(() => bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${thing.substring(1)}`), getConfig().levelBuilder.deferredPlacementDelayMs);
                 } else if (thing) {
                     bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${thing}`);
@@ -96,6 +96,10 @@ async function buildLevel(bot: Bot, csv_content: string, coords: Vec3): Promise<
         }
     }
 
+    bot.chat('/gamemode survival @s');
+    bot.chat('/effect give @s minecraft:instant_health 1 200');
+    bot.chat('/effect give @s minecraft:saturation 1 200');
+
     // load invetory of bot
     if (inventory[0]) {
         // hotbar
@@ -106,9 +110,9 @@ async function buildLevel(bot: Bot, csv_content: string, coords: Vec3): Promise<
         // rest of the inventory
         inventory.shift();
         let slot_number = 0;
-        for (const [row, items] of inventory.entries()) {
+        for (const [_row, items] of inventory.entries()) {
             for (const item of items) {
-                if (item[0] === "/") {
+                if (item.startsWith("/")) {
                     bot.chat(item);
                     continue;
                 }
@@ -118,12 +122,8 @@ async function buildLevel(bot: Bot, csv_content: string, coords: Vec3): Promise<
         }
     }
 
-    bot.chat('/gamemode survival @s');
-    bot.chat('/effect give @s minecraft:instant_health 1 200');
-    bot.chat('/effect give @s minecraft:saturation 1 200');
-
     await bot.waitForTicks(getConfig().levelBuilder.postBuildWaitTicks);
-    await bot.setQuickBarSlot(0);
+    bot.setQuickBarSlot(0);
     return map;
 }
 
@@ -228,7 +228,7 @@ function getNbt(input: string): [string, nbtts.Tag] {
 // convert from standard dashed notation: eaec6bda-374c-4cf0-9e5d-e986a33d8a78 
 // to miecraft signed int representation: [I;-353604646,927747312,-1638012538,-1556247944]
 function uuidToArray(uuid: UUID): Int32Array {
-    const hex = uuid.replace(/-/g, '');
+    const hex = uuid.replaceAll('-', '');
     const buffer = Buffer.from(hex, 'hex');
 
     const arr = new Int32Array(4);

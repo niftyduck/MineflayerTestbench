@@ -6,8 +6,13 @@ import { getConfig } from './config.js';
 
 export async function initBot(name: string, address: string | null): Promise<Bot> {
     return new Promise((resolve, reject) => {
+
+        const [host, portString] = (address || "localhost").split(":");
+        const port = Number(portString);
+
         const bot = mineflayer.createBot({
-            host: address || "localhost",
+            host,
+            port,
             username: name,
             auth: 'offline' // for offline mode servers, no need to buy real accounts for testing
         });
