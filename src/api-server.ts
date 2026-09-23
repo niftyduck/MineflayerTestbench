@@ -16,6 +16,7 @@ interface BotEntry {
     lastLevelCsv: string | null;
     lastLocation: Vec3 | null;
     map: Record<string, Vec3 | UUID> | null;
+    deaths: number; // how many times this bot has died since it joined
 }
 
 export const bots: Map<string, BotEntry> = new Map();
@@ -69,6 +70,7 @@ export function startApiServer(port: number): void {
             position: { x: pos.x, y: pos.y, z: pos.z },
             health: bot.bot.health,
             food: bot.bot.food,
+            deaths: bot.deaths,
             inventory,
             nearbyBlocks,
             nearbyEntities,
@@ -131,6 +133,9 @@ export function startApiServer(port: number): void {
 
         try {
             bot.bot = await initBot(req.params.bot, req.params.address);
+            bot.deaths ??= 0;
+            const entry = bot;
+            entry.bot.on('death', () => { entry.deaths++; });
             console.log()
         } catch (err: any) {
             res.status(500).json({ error: 'Failed to create bot ' + err });
