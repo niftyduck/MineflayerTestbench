@@ -2,7 +2,7 @@ import type { Bot } from 'mineflayer';
 import type { TestCasesSchema } from './tests-schema.js'
 
 import csv from '@fast-csv/format'
-import fs from 'fs'
+import fs from 'node:fs'
 
 import { Vec3 } from 'vec3';
 import { buildLevel } from './level-builder.js';
@@ -26,7 +26,8 @@ export async function executeTests(bot: Bot, parsed_tests: TestCasesSchema, outp
 
         console.log("\nBuilding level");
 
-        const map = await buildLevel(bot, meta.level_csv, location)
+        const csv = fs.readFileSync(meta.level_csv).toString('utf-8');
+        const map = await buildLevel(bot, csv, location)
 
         console.log(`Executing test ${test_case.id}...`);
 

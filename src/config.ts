@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import fs from 'fs';
+import fs from 'node:fs';
 
 /**
  * Runtime-tunable parameters for the testbench. Every value has a default equal
@@ -90,8 +90,6 @@ export function loadConfig(path: string = './config.json'): Config {
  * lazily loads defaults so modules can be used/tested without an explicit load.
  */
 export function getConfig(): Config {
-    if (!cached) {
-        cached = ConfigSchema.parse({});
-    }
+    cached ??= ConfigSchema.parse({});
     return cached;
 }

@@ -1,24 +1,28 @@
 {
     "meta": {
-        "id": "hahahdds",
+        "id": "MTFB Test",
         "time": "2025-08-01T20:12",
         "x": 16,
         "y": 65,
         "z": 0,
         "username": "Bot",
-        "address": "localhost", 
+        "address": "localhost",
         "level_csv": "./test.csv",
         "output_csv": "./debug_log.csv"
     },
     "test_cases": [
         {
-            "id": "122",
+            "id": "TEST",
             "actions": [
                 {
                     "name": "move_to",
                     "target": "chest",
                     "expect_result": true,
                     "verbose": true
+                },
+                {
+                    "name": "assert_xp",
+                    "level": 0
                 },
                 {
                     "name": "select",
@@ -35,7 +39,7 @@
                     "item": "cake"
                 },
                 {
-                    "name": "place",
+                    "name": "place_on",
                     "target": "below_chest",
                     "face": "top"
                 },
@@ -44,7 +48,7 @@
                     "item": "stone"
                 },
                 {
-                    "name": "place",
+                    "name": "place_on",
                     "target": "place",
                     "face": "south"
                 },
@@ -79,6 +83,39 @@
                     "expect_result": false
                 },
                 {
+                    "name": "break",
+                    "target": "chest",
+                    "expect_result": true
+                },
+                {
+                    "name": "check_advancement",
+                    "advancement": "minecraft:story/mine_stone",
+                    "expect_result": false
+                },
+                {
+                    "name": "move_to",
+                    "target": "stone_to_dig",
+                    "expect_result": true
+                },
+                {
+                    "name": "select",
+                    "item": "diamond_pickaxe",
+                    "expect_result": true
+                },
+                {
+                    "name": "break",
+                    "target": "stone_to_dig",
+                    "expect_result": true
+                },
+                {
+                    "name": "pick_up_loot"
+                },
+                {
+                    "name": "check_advancement",
+                    "advancement": "minecraft:story/mine_stone",
+                    "expect_result": true
+                },
+                {
                     "name": "move_to",
                     "target": "btn",
                     "expect_result": true
@@ -111,7 +148,7 @@
                 },
                 {
                     "name": "wait",
-                    "ticks": 30
+                    "ticks": 22
                 },
                 {
                     "name": "attack",
@@ -128,6 +165,94 @@
                     "target": "frank",
                     "health": 1.0,
                     "expect_result": true
+                },
+                {
+                    "name": "craft",
+                    "verbose": true,
+                    "item": "oak_planks",
+                    "count": 12
+                },
+                {
+                    "name": "craft",
+                    "item": "crafting_table",
+                    "verbose": true
+                },
+                {
+                    "name": "check_inventory",
+                    "item": "crafting_table",
+                    "expect_result": true
+                },
+                {
+                    "name": "check_inventory",
+                    "item": "oak_planks",
+                    "count": 8,
+                    "verbose": true,
+                    "expect_result": true
+                },
+                {
+                    "name": "check_inventory",
+                    "item": "oak_log",
+                    "count": 12,
+                    "expect_result": false
+                },
+                {
+                    "name": "select",
+                    "item": "crafting_table",
+                    "expect_result": true
+                },
+                {
+                    "name": "place",
+                    "target": "crafting_table",
+                    "expect_result": true
+                },
+                {
+                    "name": "craft",
+                    "item": "stick",
+                    "target": "crafting_table"
+                },
+                {
+                    "name": "move_to",
+                    "target": "crafting_table",
+                    "distance": 2
+                },
+                {
+                    "name": "craft",
+                    "item": "stone_shovel",
+                    "target": "crafting_table",
+                    "verbose": true
+                },
+                {
+                    "name": "check_inventory",
+                    "item": "stone_shovel",
+                    "expect_result": true
+                },
+                {
+                    "name": "sneak",
+                    "state": true
+                },
+                {
+                    "name": "select",
+                    "item": "oak_log"
+                },
+                {
+                    "name": "place",
+                    "target": "midair" 
+                },
+                {
+                    "name": "check_block",
+                    "target": "midair",
+                    "expected": "oak_log"
+                },
+                {
+                    "name": "wait",
+                    "ticks": 5
+                },
+                {
+                    "name": "sneak",
+                    "state": false
+                },
+                {
+                    "name": "jump"
                 }
             ]
         }

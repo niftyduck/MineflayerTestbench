@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Bot } from 'mineflayer';
 
-import { attack, breakBlock, click, moveTo, selectItem, craft, pickUpLoot, placeBlockOn, useOnEntity, checkBlock, checkEntity, anvil, checkInventory, sneak } from './abstraction.js'
+import { attack, breakBlock, click, moveTo, selectItem, craft, pickUpLoot, placeBlockOn, useOnEntity, checkBlock, checkEntity, anvil, checkInventory, sneak, checkAdvancement, jump, rawBlockPlace, assertChatResponse, assertCoreProtect, assertExperience, lookAt } from './abstraction.js'
 import { Vec3 } from 'vec3';
 
 
@@ -35,7 +35,7 @@ const ActionSchema = z.object({
     verbose: z.boolean().optional(),
 })
 
-const CheckSchema = ActionSchema.extend({
+const AssertionSchema = ActionSchema.extend({
     expect_result: z.boolean().default(true),
 })
 
@@ -56,10 +56,49 @@ const Sneak = ActionSchema.extend({
 }).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await sneak(bot, data.state)
+        return sneak(bot, data.state)
     }
 }))
 
+
+const Jump = ActionSchema.extend({
+    name: z.literal("jump"),
+}).transform((data) => ({
+    ...data,
+    execute: async (bot: Bot, map: any) => {
+        return await jump(bot)
+    }
+}))
+
+const ActivateItem = ActionSchema.extend({
+    name: z.literal("activate_item"),
+}).transform((data) => ({
+    ...data,
+    execute: async (bot: Bot, map: any) => {
+        bot.activateItem();
+        return;
+    }
+}))
+
+const ConsumeItem = ActionSchema.extend({
+    name: z.literal("consume_item"),
+}).transform((data) => ({
+    ...data,
+    execute: async (bot: Bot, map: any) => {
+        await bot.consume();
+        return;
+    }
+}))
+
+const LookAt = ActionSchema.extend({
+    name: z.literal("look_at"),
+    target: Target
+}).transform((data) => ({
+    ...data,
+    execute: async (bot: Bot, map: any) => {
+        await lookAt(bot, getTarget(data.target, map))
+    }
+}))
 
 const PickUpLoot = ActionSchema.extend({
     name: z.literal("pick_up_loot"),
@@ -71,13 +110,23 @@ const PickUpLoot = ActionSchema.extend({
 }))
 
 const PlaceBlockOn = ActionSchema.extend({
-    name: z.literal("place"),
+    name: z.literal("place_on"),
     target: Target,
     face: z.string(),
 }).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
         return await placeBlockOn(bot, getTarget(data.target, map), data.face, data.verbose);
+    }
+}))
+
+const RawPlace = ActionSchema.extend({
+    name: z.literal("place"),
+    target: Target,
+}).transform((data) => ({
+    ...data,
+    execute: async (bot: Bot, map: any) => {
+        return await rawBlockPlace(bot, getTarget(data.target, map));
     }
 }))
 
@@ -97,7 +146,7 @@ const AnvilOperation = ActionSchema.extend({
     item_one: z.string().optional(),
     item_two: z.string().optional(),
     custom_name: z.string().optional(),
-}).refine((data) => !(!data.item_two && !data.custom_name),
+}).refine((data) => !(!data.item_two && data.custom_name == null),
     {
         message: "custom_name is mandatory when item_two is not provided"
     }
@@ -124,20 +173,32 @@ const Craft = ActionSchema.extend({
 const Click = ActionSchema.extend({
     name: z.literal("click"),
     target: Target,
+    face: z.string().optional()
 }).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await click(bot, getTarget(data.target, map));
+        return await click(bot, getTarget(data.target, map), data.face);
+    }
+}))
+
+
+const UseOnEntity = ActionSchema.extend({
+    name: z.literal("use_on_entity"),
+    target: Target,
+}).transform((data) => ({
+    ...data,
+    execute: async (bot: Bot, map: any) => {
+        return await useOnEntity(bot, getTarget(data.target, map));
     }
 }))
 
 const SelectItem = ActionSchema.extend({
     name: z.literal("select"),
-    item: z.string(),
+    item: z.string().nullable().optional(),
 }).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return await selectItem(bot, data.item, data.verbose);
+        return await selectItem(bot, data.item ?? null, data.verbose);
     }
 }))
 
@@ -164,7 +225,7 @@ const Attack = ActionSchema.extend({
 
 // checks
 
-const CheckEntity = CheckSchema.extend({
+const CheckEntity = AssertionSchema.extend({
     name: z.literal("check_entity"),
     target: z.string(),
     nbt: z.string().optional(),
@@ -176,7 +237,55 @@ const CheckEntity = CheckSchema.extend({
     }
 }))
 
-const CheckBlock = CheckSchema.extend({
+const CheckAdvancement = AssertionSchema.extend({
+    name: z.literal("check_advancement"),
+    advancement: z.string(),
+}).transform((data) => ({
+    ...data,
+    execute: async (bot: Bot, map: any) => {
+        return await checkAdvancement(bot, data.advancement);
+    }
+}))
+
+const AssertExperience = AssertionSchema.extend({
+    name: z.literal("assert_xp"),
+    level: z.int(),
+}).transform((data) => ({
+    ...data,
+    execute: async (bot: Bot, map: any) => {
+        return await assertExperience(bot, data.level);
+    }
+}))
+
+const AssertChatResponse = AssertionSchema.extend({
+    name: z.literal("assert_chat"),
+    command: z.string().optional(),
+    expected: z.string()
+}).transform((data) => ({
+    ...data,
+    execute: async (bot: Bot, map: any) => {
+        return await assertChatResponse(bot, data.command ?? null, data.expected);
+    }
+}))
+
+const AssertCoreProtect = AssertionSchema.extend({
+    name: z.literal("assert_coreprotect"),
+    command: z.string().optional(),
+    count: z.int(),
+    radius: z.int(),
+    time: z.string(),
+    user: z.string().optional(),
+    action: z.string().optional(),
+    exclude: z.string().optional(),
+    include: z.string().optional()
+}).transform((data) => ({
+    ...data,
+    execute: async (bot: Bot, map: any) => {
+        return await assertCoreProtect(bot, data.count, data.radius, data.user, data.time, data.action, data.include, data.exclude);
+    }
+}))
+
+const CheckBlock = AssertionSchema.extend({
     name: z.literal("check_block"),
     target: Target,
     expected: z.string(),
@@ -188,7 +297,7 @@ const CheckBlock = CheckSchema.extend({
     }
 }))
 
-const CheckInventory = CheckSchema.extend({
+const CheckInventory = AssertionSchema.extend({
     name: z.literal("check_inventory"),
     count: z.number().int().optional(),
     item: z.string(),
@@ -210,7 +319,7 @@ const Pass = ActionSchema.extend({
 }).transform((data) => ({
     ...data,
     execute: async (bot: Bot, map: any) => {
-        return;
+        return true;
     }
 }))
 
@@ -231,17 +340,27 @@ export const DiscriminizedAction = z.discriminatedUnion("name", [
     MoveTo,
     Break,
     PickUpLoot,
+    RawPlace,
     PlaceBlockOn,
     Click,
     Craft,
     Attack,
     Sneak,
+    UseOnEntity,
+    Jump,
     AnvilOperation,
-
-    // check
+    ActivateItem,
+    LookAt,
+    ConsumeItem,
+    
+    // Assertions
     CheckBlock,
     CheckEntity,
     CheckInventory,
+    CheckAdvancement,
+    AssertChatResponse,
+    AssertCoreProtect,
+    AssertExperience,
 
     // NO-OPS
     Pass,

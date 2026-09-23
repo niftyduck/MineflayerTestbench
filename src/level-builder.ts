@@ -1,30 +1,29 @@
-import fs from 'fs';
-import csv from '@fast-csv/parse';
+import { parseString } from '@fast-csv/parse';
 import nbtts from "nbt-ts";
 import { Vec3 } from 'vec3';
 import type { Bot } from 'mineflayer';
-import { UUID } from 'crypto';
+import { UUID } from 'node:crypto';
 import { getConfig } from './config.js';
 
 // Coords should be a vec3 of the bottom xyz corner of the level
-async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<Record<string, Vec3 | UUID>> {
+async function buildLevel(bot: Bot, csv_content: string, coords: Vec3): Promise<Record<string, Vec3 | UUID>> {
     bot.chat('/gamemode spectator @s');
     bot.chat(`/tp @s ${coords.x} ${coords.y} ${coords.z}`);
 
-    const [inventory, structure] = await loadCsv(csv_file);
+    const [inventory, structure] = await process_level(csv_content);
 
     const playerY = structure.findIndex(layer =>
         layer.some(row =>
-            row.includes("@player")
+            row.some( cell => new RegExp(/@player(\^.+)?/).exec(cell))
         )
     );
 
-    if ( playerY == -1 ){
+    if (playerY == -1) {
         throw new Error("Invalid level, must specify player position");
     }
 
     // dy must be tall enough to fit the player
-    const dy: number = Math.max(playerY + 2, structure.length);
+    const dy: number = Math.max(playerY + 3, structure.length);
 
     // find longest row for the z dimension
     const dz: number = Math.max(3, ...structure.map((layer: string[][]) => layer.length));
@@ -40,9 +39,10 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<Rec
     bot.chat('/xp set @s 0');
     bot.chat('/xp set @s 0 levels');
     bot.chat('/effect clear @s');
+    bot.chat('/advancement revoke @s everything');
     // execute the kill command multiple times to also kill any items the entities may have dropped
     // also to handle slimes
-    const kill_cmd = `/kill @e[type=!minecraft:player, x=${coords.x - 1}, y=${coords.y - 1}, z=${coords.z - 1}, dx=${dx}, dy=${dy}, dz=${dz}]`
+    const kill_cmd = `/kill @e[type=!minecraft:player, x=${coords.x - 1}, y=${coords.y - 1}, z=${coords.z - 1}, dx=${dx+1}, dy=${dy+1}, dz=${dz+1}]`
     bot.chat(kill_cmd);
     bot.chat(kill_cmd);
     bot.chat(kill_cmd);
@@ -65,13 +65,16 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<Rec
 
                 if (thing == "@player") {
                     bot.chat(`/tp @s ${pos.x} ${pos.y} ${pos.z}`)
+                    if (tag) {
+                        map[tag] = pos;
+                    }
                     continue;
                 }
 
                 // if it starts with @ it's an entity
-                if (thing[0] === "@") {
+                if (thing.startsWith("@")) {
                     let entity_id: string = thing.substring(1);
-                    let uuid = await summonEntity(entity_id, pos, bot, tag);
+                    let uuid = summonEntity(entity_id, pos, bot, tag);
                     if (tag && uuid) {
                         map[tag] = uuid;
                     }
@@ -79,7 +82,7 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<Rec
                 }
 
                 //defer block placement
-                if (thing[0] === "!") {
+                if (thing.startsWith("!")) {
                     setTimeout(() => bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${thing.substring(1)}`), getConfig().levelBuilder.deferredPlacementDelayMs);
                 } else if (thing) {
                     bot.chat(`/setblock ${pos.x} ${pos.y} ${pos.z} ${thing}`);
@@ -93,6 +96,10 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<Rec
         }
     }
 
+    bot.chat('/gamemode survival @s');
+    bot.chat('/effect give @s minecraft:instant_health 1 200');
+    bot.chat('/effect give @s minecraft:saturation 1 200');
+
     // load invetory of bot
     if (inventory[0]) {
         // hotbar
@@ -103,9 +110,9 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<Rec
         // rest of the inventory
         inventory.shift();
         let slot_number = 0;
-        for (const [row, items] of inventory.entries()) {
+        for (const [_row, items] of inventory.entries()) {
             for (const item of items) {
-                if (item[0] === "/") {
+                if (item.startsWith("/")) {
                     bot.chat(item);
                     continue;
                 }
@@ -115,24 +122,19 @@ async function buildLevel(bot: Bot, csv_file: string, coords: Vec3): Promise<Rec
         }
     }
 
-    bot.chat('/gamemode survival @s');
-    bot.chat('/effect give @s minecraft:instant_health 1 200');
-    bot.chat('/effect give @s minecraft:saturation 1 200');
-
     await bot.waitForTicks(getConfig().levelBuilder.postBuildWaitTicks);
-    await bot.setQuickBarSlot(0);
+    bot.setQuickBarSlot(0);
     return map;
 }
 
-async function loadCsv(csv_file: string): Promise<[string[][], string[][][]]> {
+async function process_level(csv: string): Promise<[string[][], string[][][]]> {
     const inventory: string[][] = [];
     const structure: string[][][] = [];
     let current_layer: string[][] = [];
 
     await new Promise((resolve) => {
         let dest = inventory;
-        fs.createReadStream(csv_file)
-            .pipe(csv.parse({ headers: false }))
+        parseString(csv, { headers: false })
             .on('data', (row) => {
                 // "|" symbol is use to separate vertical layers in the y layer
                 if (row[0]?.startsWith('|')) {
@@ -228,7 +230,7 @@ function getNbt(input: string): [string, nbtts.Tag] {
 // convert from standard dashed notation: eaec6bda-374c-4cf0-9e5d-e986a33d8a78 
 // to miecraft signed int representation: [I;-353604646,927747312,-1638012538,-1556247944]
 function uuidToArray(uuid: UUID): Int32Array {
-    const hex = uuid.replace(/-/g, '');
+    const hex = uuid.replaceAll('-', '');
     const buffer = Buffer.from(hex, 'hex');
 
     const arr = new Int32Array(4);
