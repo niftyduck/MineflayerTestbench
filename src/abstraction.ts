@@ -86,6 +86,14 @@ export async function breakBlock(bot: Bot, block: Block | Vec3, verbose?: boolea
     return to_dig.type != result?.type;
 }
 
+function getViewDirection(pitch: number, yaw: number) {
+    const csPitch = Math.cos(pitch)
+    const snPitch = Math.sin(pitch)
+    const csYaw = Math.cos(yaw)
+    const snYaw = Math.sin(yaw)
+    return new Vec3(-snYaw * csPitch, snPitch, -csYaw * csPitch)
+}
+
 export async function click(bot: Bot, target: Block | UUID | Vec3, face?: string, verbose?: boolean) {
     if (typeof target === "string") {
         const entity = uuidToEntity(bot, target);
@@ -99,7 +107,7 @@ export async function click(bot: Bot, target: Block | UUID | Vec3, face?: string
     let block: Block | null = isBlock(target) ? target : bot.blockAt(target);
     if (block) {
         let directionVector: Vec3 | undefined;
-        let cursorPosition: Vec3;
+        let cursorPosition: Vec3 | undefined;
 
         if (face) {
             directionVector = nameToFace(face);
@@ -107,25 +115,22 @@ export async function click(bot: Bot, target: Block | UUID | Vec3, face?: string
             cursorPosition = new Vec3(0.5, 0.5, 0.5);
         } else {
             // 1. Get bot's eye position
-            const eyePosition = bot.entity.position.offset(0, bot.entity.height, 0);
-
-            // 2. Get vector pointing from eye to the center of the target block
-            const blockCenter = block.position.offset(0.5, 0.5, 0.5);
-            const rayDir = blockCenter.minus(eyePosition as Vec3).normalize();
+            await bot.lookAt(block.position);
+            const { position, height, pitch, yaw } = bot.entity
+            const eyePosition = position.offset(0, height, 0);
+            const viewDirection = getViewDirection(pitch, yaw)
 
             // 3. Perform raycast to find the exact hit face and intersection point
-            const raycastResult = bot.world.raycast(eyePosition, rayDir, 6);
+            const raycastResult = bot.world.raycast(eyePosition, viewDirection, 5);
 
             if (raycastResult && raycastResult.intersect) {
                 // Converts internal face ID (0-5) to a direction Vec3
                 directionVector = nameToFace(raycastResult.face.toString());
-                
+
                 // Convert absolute world intersection point to relative cursor position inside the block [0.0, 1.0]
-                cursorPosition = raycastResult.intersect.minus(block.position) as Vec3;
-            } else {
-                // Fallback: If raycast fails (e.g., out of reach), target the top face from above
-                directionVector = new Vec3(0, 1, 0);
-                cursorPosition = new Vec3(0.5, 1.0, 0.5);
+                if (raycastResult.intersect.floored() == block.position) {
+                    cursorPosition = raycastResult.intersect.minus(block.position) as Vec3;
+                } 
             }
         }
 
@@ -635,13 +640,13 @@ export async function selectItem(bot: Bot, element: number | string | null, verb
 }
 
 const BlockFace = {
-  UNKNOWN: -999,
-  BOTTOM: 0,
-  TOP: 1,
-  NORTH: 2,
-  SOUTH: 3,
-  WEST: 4,
-  EAST: 5
+    UNKNOWN: -999,
+    BOTTOM: 0,
+    TOP: 1,
+    NORTH: 2,
+    SOUTH: 3,
+    WEST: 4,
+    EAST: 5
 }
 
 function nameToFace(face: string | undefined): Vec3 | undefined {
